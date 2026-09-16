@@ -88,15 +88,33 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             border: 1px solid rgba(59, 130, 246, 0.4);
         }
 
-        main {
-            flex: 1;
-            display: grid;
-            grid-template-columns: 480px 1fr;
-            gap: 24px;
-            padding: 24px 32px;
-            max-width: 1600px;
-            margin: 0 auto;
-            width: 100%;
+        /* 手机移动端深度适配 */
+        @media (max-width: 900px) {
+            header { padding: 14px 18px; }
+            main {
+                grid-template-columns: 1fr;
+                padding: 14px;
+                gap: 16px;
+            }
+            .panel { padding: 18px 14px; }
+            .preview-wrapper {
+                padding: 14px 10px;
+                width: 100%;
+            }
+            /* 手机端直接全宽展示正文，去掉多余的仿真手机外壳 */
+            .phone-frame {
+                width: 100% !important;
+                height: auto !important;
+                min-height: 500px;
+                border: none !important;
+                border-radius: 14px !important;
+                box-shadow: none !important;
+            }
+            .phone-notch { display: none !important; }
+            .btn {
+                padding: 14px 20px;
+                font-size: 15px;
+            }
         }
 
         .panel {
