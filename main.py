@@ -4,10 +4,11 @@
 执行流程：
 1. 解析指定素材（PDF智库报告 / 网页文章 / 热点焦点）；
 2. 调度 AI 写作引擎按《局势洞见》冷峻风格深度撰写；
-3. 将 Markdown 内容渲染为微信专属内联 CSS 富文本 HTML；
-4. 准备或自动生成 2.35:1 比例高质感封面图；
-5. 调用微信公众平台 API 上传素材并写入草稿箱；
-6. 触发手机微信通知（PushPlus/Server酱）。
+3. 自动抓取素材插图或合成战术态势图，上传微信 CDN 并内嵌排版；
+4. 将 Markdown 内容渲染为微信专属内联 CSS 富文本 HTML；
+5. 准备或自动生成 2.35:1 比例高质感封面图；
+6. 调用微信公众平台 API 上传素材并写入草稿箱；
+7. 触发手机微信通知（PushPlus / 企微机器人）。
 """
 
 import sys
@@ -15,7 +16,7 @@ import argparse
 from pathlib import Path
 
 from config.settings import settings, logger
-from core import WeChatClient, ContentParser, AIWriter, WeChatFormatter, CoverGenerator
+from core import WeChatClient, ContentParser, AIWriter, WeChatFormatter, CoverGenerator, ImageService
 from notify import Notifier
 
 
@@ -31,8 +32,10 @@ def process_pipeline(
     logger.info("🚀 启动微信公众号内容生产与发布流水线")
     logger.info("==================================================")
 
-    # 1. 提取素材内容
+    # 1. 提取素材内容与原始配图
     raw_content = ""
+    candidate_illustrations = []
+
     if file_path:
         f_path = Path(file_path)
         if not f_path.exists():
@@ -40,10 +43,12 @@ def process_pipeline(
             return
         if f_path.suffix.lower() == ".pdf":
             raw_content = ContentParser.extract_from_pdf(str(f_path))
+            candidate_illustrations = ImageService.extract_images_from_pdf(str(f_path))
         else:
             raw_content = ContentParser.extract_from_text_file(str(f_path))
     elif url:
         raw_content = ContentParser.extract_from_url(url)
+        candidate_illustrations = ImageService.extract_images_from_url(url)
     elif topic:
         raw_content = f"请围绕当前焦点话题进行深度智库研判：{topic}"
     else:
@@ -66,11 +71,48 @@ def process_pipeline(
     digest = article_data.get("digest", "")
     markdown_content = article_data.get("markdown_content", "")
 
-    # 3. 渲染为微信富文本 HTML (带内联 CSS)
+    # 3. 基础内联 HTML 渲染
     html_content = WeChatFormatter.format_markdown_to_wechat_html(
         markdown_content,
         author=settings.WECHAT_DEFAULT_AUTHOR
     )
+
+    # 4. 验证微信配置并准备插图上传
+    wechat = None
+    if not dry_run:
+        if not settings.validate_wechat_credentials():
+            logger.error("微信凭据未填写，无法推送到公众号。请先在 .env 中配置 WECHAT_APPID 和 WECHAT_APPSECRET。")
+            return
+        wechat = WeChatClient()
+
+    # 5. 自动配图处理：如果素材无图，自动生成专业战术态势图
+    if not candidate_illustrations:
+        logger.info("素材未检测到原生图表，自动生成智库战术态势图...")
+        tactical_img = ImageService.generate_tactical_infographic(title, label="战术态势推演")
+        if tactical_img and Path(tactical_img).exists():
+            candidate_illustrations.append(tactical_img)
+
+    # 6. 将配图上传至微信 CDN 并插入正文（在 dry-run 模式下使用本地路径）
+    if candidate_illustrations:
+        for idx, img_p in enumerate(candidate_illustrations[:2]):
+            caption = f"▲ 关键战术态势与地理空间研判示意 ({idx+1})"
+            if dry_run or not wechat:
+                # 本地预览使用本地路径
+                img_url = f"file://{Path(img_p).resolve()}"
+            else:
+                try:
+                    img_url = wechat.upload_content_image(img_p)
+                except Exception as e:
+                    logger.warning(f"上传插图到微信 CDN 失败: {e}，跳过此图")
+                    continue
+
+            insert_part = "PART 01" if idx == 0 else "PART 02"
+            html_content = ImageService.insert_illustration_to_html(
+                html_content=html_content,
+                image_cdn_url=img_url,
+                caption=caption,
+                insert_after_part=insert_part
+            )
 
     # 保存一份本地预览 HTML 供调试核对
     preview_path = Path("scratch/preview.html")
@@ -86,23 +128,17 @@ def process_pipeline(
         print(f"[预览文件]: {preview_path.resolve()}\n")
         return
 
-    # 4. 验证微信配置
-    if not settings.validate_wechat_credentials():
-        logger.error("微信凭据未填写，无法推送到公众号。请先在 .env 中配置 WECHAT_APPID 和 WECHAT_APPSECRET。")
-        return
-
-    # 5. 准备封面图并上传永久素材
+    # 7. 准备封面图并上传永久素材
     if not cover_image or not Path(cover_image).exists():
         cover_image = CoverGenerator.generate_default_cover(title)
 
-    wechat = WeChatClient()
     try:
         thumb_media_id = wechat.upload_thumb_material(cover_image)
     except Exception as e:
         logger.error(f"上传封面素材失败: {e}")
         return
 
-    # 6. 推送到微信草稿箱
+    # 8. 推送到微信草稿箱
     try:
         draft_media_id = wechat.create_draft(
             title=title,
@@ -114,7 +150,7 @@ def process_pipeline(
         logger.error(f"提交草稿箱失败: {e}")
         return
 
-    # 7. 手机端实时通知
+    # 9. 手机端实时通知
     Notifier.notify_publish_success(title, digest, draft_media_id)
 
     logger.info("==================================================")
