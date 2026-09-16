@@ -287,7 +287,30 @@ body {
     color: var(--primary);
     border: 1px solid rgba(30, 64, 175, 0.15);
 }
-.topic-origin { font-size: 11px; color: var(--text-muted); }
+
+.topic-origin { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+.topic-source-jump {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--primary);
+    background: rgba(37, 99, 235, 0.08);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: 6px;
+    padding: 2px 7px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+.topic-source-jump:hover {
+    background: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
 .topic-headline {
     font-size: 14px;
     font-weight: 600;

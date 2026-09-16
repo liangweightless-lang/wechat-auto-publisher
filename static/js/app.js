@@ -75,18 +75,35 @@ async function loadHotTopics() {
 }
 
 function renderTopics(topics) {
-    const listEl = document.getElementById('mobileHotList');
-    listEl.innerHTML = '';
-    topics.slice(0, 5).forEach((t, idx) => {
-        const item = document.createElement('div');
-        item.className = 'topic-chip-item';
+    const listEl = document.getElementById("mobileHotList");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+    topics.slice(0, 6).forEach((t, idx) => {
+        const item = document.createElement("div");
+        item.className = "topic-row-item";
         item.onclick = () => selectTopic(t.title);
 
-        const hotClass = idx < 3 ? 'top3' : '';
+        const sourceName = t.source || "权威防务信源";
+        const jumpUrl = t.url || ("https://www.toutiao.com/search?keyword=" + encodeURIComponent(t.title));
+
+        let summaryHtml = "";
+        if (t.summary) {
+            summaryHtml = "<div class=\"topic-abstract\">" + t.summary + "</div>";
+        }
+
         item.innerHTML = `
-            <div class="topic-chip-num ${hotClass}">${idx + 1}</div>
-            <div class="topic-chip-title">${t.title}</div>
-            <div class="topic-chip-hot">🔥 ${t.hot || '高'}</div>
+            <div class="topic-rank-num">${idx + 1}</div>
+            <div class="topic-main-content">
+                <div class="topic-top-meta">
+                    <span class="topic-badge-tag">📰 ${sourceName}</span>
+                    <a href="${jumpUrl}" target="_blank" rel="noopener noreferrer" class="topic-source-jump" onclick="event.stopPropagation()" title="在浏览器打开新闻出处">
+                        <span>出处原文</span>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    </a>
+                </div>
+                <div class="topic-headline">${t.title}</div>
+                ${summaryHtml}
+            </div>
         `;
         listEl.appendChild(item);
     });
