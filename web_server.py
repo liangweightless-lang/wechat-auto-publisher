@@ -340,6 +340,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             align-items: center;
             justify-content: center;
             padding: 24px;
+            pointer-events: none;
+        }
+        .modal-mask.active {
+            display: flex !important;
+            pointer-events: auto !important;
         }
         .modal-box {
             background: var(--bg-surface);
@@ -603,7 +608,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     <!-- 手机底部常驻操作栏 -->
     <div class="bottom-action-bar">
-        <button class="btn-wechat-push" id="mobilePublishBtn" onclick="triggerMobilePublish()" disabled>
+        <button class="btn-wechat-push" id="mobilePublishBtn" onclick="triggerMobilePublish()">
             <div class="spinner" id="mobilePubSpinner"></div>
             <span id="mobilePubText">📤 一键推送到微信公众平台草稿箱</span>
         </button>
@@ -737,12 +742,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         async function triggerMobileGenerate() {
             const topic = document.getElementById('mobileTopicInput').value.trim();
             if (!mobileSelectedFile && !topic) {
-                alert("请先选择 PDF 智库报告或在输入框点选焦点话题！");
+                showToast("⚠️ 请先点选上方话题或选择 PDF 报告！", true);
+                const inputEl = document.getElementById('mobileTopicInput');
+                if (inputEl) { inputEl.focus(); }
                 return;
             }
 
             const modal = document.getElementById('progressModal');
-            modal.style.display = 'flex';
+            modal.classList.add('active');
             updateStep(1);
 
             // 动态模拟步进体验
@@ -759,7 +766,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 const resp = await fetch("/api/generate", { method: "POST", body: formData });
                 const data = await resp.json();
                 clearTimeout(timer1); clearTimeout(timer2); clearTimeout(timer3); clearTimeout(timer4);
-                modal.style.display = 'none';
+                modal.classList.remove('active');
 
                 if (data.code === 200) {
                     document.getElementById('mobilePreviewContent').innerHTML = data.html_content;
@@ -774,12 +781,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     showToast("🎉 智库级深度长文已装配就绪！");
                     setTimeout(() => { switchView('preview'); }, 500);
                 } else {
-                    alert("生成失败: " + data.message);
+                    showToast("生成失败: " + data.message, true);
                 }
             } catch (err) {
                 clearTimeout(timer1); clearTimeout(timer2); clearTimeout(timer3); clearTimeout(timer4);
-                modal.style.display = 'none';
-                alert("网络连接异常: " + err);
+                modal.classList.remove('active');
+                showToast("网络连接异常: " + err, true);
             }
         }
 
@@ -841,6 +848,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             const spinner = document.getElementById('mobilePubSpinner');
             const text = document.getElementById('mobilePubText');
 
+            const previewContent = document.getElementById('mobilePreviewContent');
+            if (!previewContent || previewContent.innerText.includes('暂无生成内容')) {
+                showToast("⚠️ 请先在【选题与生成】中点击生成文章，再推送到草稿箱！", true);
+                switchView('edit');
+                return;
+            }
+
             btn.disabled = true;
             spinner.style.display = "inline-block";
             text.innerText = "正在推送到微信公众平台草稿箱...";
@@ -852,10 +866,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     showToast("🚀 成功推送到微信草稿箱！手机已收到推送提醒。");
                     alert("🎉 恭喜！文章已成功写入【微信公众平台草稿箱】！\n\n您可以直接在手机打开「订阅号助手」App 或微信公众平台后台一键群发！");
                 } else {
-                    alert("推送草稿箱失败: " + data.message);
+                    showToast("推送失败: " + data.message, true);
                 }
             } catch (err) {
-                alert("网络通信异常: " + err);
+                showToast("网络异常: " + err, true);
             } finally {
                 btn.disabled = false;
                 spinner.style.display = "none";
