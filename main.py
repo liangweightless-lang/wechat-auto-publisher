@@ -177,6 +177,7 @@ def main():
     parser.add_argument("--cover", "-c", type=str, help="指定封面图片路径 (默认自动生成)")
     parser.add_argument("--dry-run", action="store_true", help="本地预览调试模式，不向微信上传")
     parser.add_argument("--web", action="store_true", help="启动可视化 Web 控制台服务")
+    parser.add_argument("--crawl", action="store_true", help="自动触发关键词爬虫，抓取最新防务热点并发布")
 
     args = parser.parse_args()
 
@@ -185,12 +186,28 @@ def main():
         run_server()
         return
 
+    if args.crawl:
+        logger.info("📡 正在启动关键词智能爬虫探测最新防务热点...")
+        topics = DefenseCrawler.fetch_hot_topics(limit=1)
+        if not topics:
+            logger.info("未检测到新的未发布防务热点，任务结束。")
+            return
+        target = topics[0]
+        logger.info(f"🎯 命中高价值热点: 【{target['title']}】 (标签: #{target['matched_keyword']})")
+        process_pipeline(
+            topic=target['title'],
+            dry_run=args.dry_run
+        )
+        DefenseCrawler.save_history(target['title'])
+        return
+
     if not any([args.file, args.url, args.topic]):
         print("\n使用示例：")
         print("1. 启动可视化网页控制台: python main.py --web")
-        print("2. 从 PDF 报告生成: python main.py --file /path/to/胡塞武装与沙特冲突舆情报告.pdf")
-        print("3. 从热点话题生成: python main.py --topic '曼德海峡地缘博弈与美军航母困境'")
-        print("4. 本地仅排版预览: python main.py --topic '美军间谍船遭袭事件' --dry-run\n")
+        print("2. 自动关键词爬虫抓取发布: python main.py --crawl")
+        print("3. 从 PDF 报告生成: python main.py --file /path/to/胡塞武装与沙特冲突舆情报告.pdf")
+        print("4. 从热点话题生成: python main.py --topic '曼德海峡地缘博弈与美军航母困境'")
+        print("5. 本地仅排版预览: python main.py --topic '美军间谍船遭袭事件' --dry-run\n")
         parser.print_help()
         sys.exit(1)
 

@@ -261,10 +261,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
             <div style="text-align: center; color: var(--text-muted); font-size: 12px;">— 或者 —</div>
 
+            <!-- 热点爬虫自动探测模块 -->
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 13px; font-weight: 600; color: #60a5fa;">📡 关键词自动爬虫监控热点</span>
+                    <button onclick="fetchHotTopics()" style="background: none; border: 1px solid rgba(96,165,250,0.4); color: #60a5fa; font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer;">刷新热点</button>
+                </div>
+                <div id="hotList" style="display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
+                    <div style="color: var(--text-muted);">点击上方“刷新热点”即可自动抓取最新防务舆情...</div>
+                </div>
+            </div>
+
             <!-- 热点话题输入 -->
             <div>
-                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">直接输入研判热点 / 新闻链接：</label>
-                <input type="text" id="topicInput" placeholder="例如：美军间谍船遭袭事件深度复盘 或 网页长文链接">
+                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">研判热点 / 新闻链接：</label>
+                <input type="text" id="topicInput" placeholder="点击上方热点自动填入，或直接输入">
             </div>
 
             <!-- 生成按钮 -->
@@ -306,6 +317,43 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     <script>
         let selectedFile = null;
+
+        // 抓取并展示防务热点
+        async function fetchHotTopics() {
+            const listDiv = document.getElementById('hotList');
+            listDiv.innerHTML = '<div style="color: #60a5fa;">正在实时扫描各大防务与国际热点资讯流...</div>';
+            try {
+                const resp = await fetch('/api/crawl');
+                const data = await resp.json();
+                if (data.code === 200 && data.topics.length) {
+                    listDiv.innerHTML = '';
+                    data.topics.forEach(t => {
+                        const row = document.createElement('div');
+                        row.style.padding = '8px 10px';
+                        row.style.background = 'rgba(255,255,255,0.05)';
+                        row.style.borderRadius = '6px';
+                        row.style.cursor = 'pointer';
+                        row.style.transition = 'background 0.2s';
+                        row.onmouseover = () => row.style.background = 'rgba(59,130,246,0.15)';
+                        row.onmouseout = () => row.style.background = 'rgba(255,255,255,0.05)';
+                        row.onclick = () => {
+                            document.getElementById('topicInput').value = t.title;
+                        };
+                        row.innerHTML = `<span style="background: #1e3a8a; color: #93c5fd; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 6px;">#${t.matched_keyword}</span><strong>${t.title}</strong>`;
+                        listDiv.appendChild(row);
+                    });
+                } else {
+                    listDiv.innerHTML = '<div style="color: var(--text-muted);">暂无新热点，可直接手动输入话题</div>';
+                }
+            } catch (err) {
+                listDiv.innerHTML = '<div style="color: #ef4444;">热点抓取异常: ' + err + '</div>';
+            }
+        }
+
+        // 页面加载完毕后自动拉取一次热点
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchHotTopics();
+        });
 
         // 拖拽文件事件
         const dropzone = document.getElementById('dropzone');
@@ -426,6 +474,10 @@ class WebRequestHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
             self.wfile.write(HTML_TEMPLATE.encode("utf-8"))
+        elif url_path == "/api/crawl":
+            # 抓取最新防务热点列表
+            topics = DefenseCrawler.fetch_hot_topics(limit=5)
+            self.send_json_response(200, "获取热点成功", {"topics": topics})
         elif url_path.startswith("/assets/"):
             # 返回静态资源（图片等）
             file_path = BASE_DIR / url_path.lstrip("/")

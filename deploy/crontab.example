@@ -5,8 +5,8 @@
 # 2. 将以下规则根据您的实际路径修改后粘贴并保存
 # ==============================================================================
 
-# 每天早晨 07:30 自动执行一次热点抓取并推送到微信草稿箱（输出日志到 cron.log）
-# 30 7 * * * cd /root/wechat-auto-publisher && ./venv/bin/python main.py --topic "全球重点防务热点与地缘博弈" >> /root/wechat-auto-publisher/cron.log 2>&1
+# 每天早晨 07:30 自动触发关键词爬虫，抓取最新防务热点、写文、生图并推送到微信草稿箱（输出日志到 cron.log）
+30 7 * * * cd /root/wechat-auto-publisher && ./venv/bin/python main.py --crawl >> /root/wechat-auto-publisher/cron.log 2>&1
 
 # 每周一上午 08:00 自动处理指定智库报告目录下的最新 PDF
 # 0 8 * * 1 cd /root/wechat-auto-publisher && ./venv/bin/python main.py --file "/root/reports/weekly.pdf" >> /root/wechat-auto-publisher/cron.log 2>&1
