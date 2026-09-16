@@ -1,12 +1,29 @@
-.env
+# Python 编译文件
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
 .Python
-env/
+
+# 虚拟环境
 venv/
-.venv/
-scratch/
-assets/temp/
+env/
+ENV/
+
+# 环境变量敏感文件 (企业绝对红线，不进仓库)
+.env
+!.env.example
+
+# 运行时临时数据与日志
+logs/*
+!logs/.gitkeep
+storage/*
+!storage/.gitkeep
 *.log
+local_web.log
+publisher.log
+
+# 操作系统与 IDE 缓存
+.DS_Store
+.idea/
+.vscode/

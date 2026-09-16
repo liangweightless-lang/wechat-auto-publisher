@@ -150,7 +150,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             # 处理上传的 PDF 或 TXT
             if "file" in form and form["file"].filename:
                 file_item = form["file"]
-                upload_dir = BASE_DIR / "scratch" / "uploads"
+                upload_dir = BASE_DIR / "storage" / "uploads"
                 upload_dir.mkdir(parents=True, exist_ok=True)
                 saved_path = upload_dir / file_item.filename
 

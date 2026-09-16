@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 移动端消息推送模块
-职责：在文章生成完毕并推送到微信草稿箱后，将结果实时推送到手机端，支持 PushPlus、Server酱 和企业微信群机器人。
+职责：在文章生成完毕并推送到微信草稿箱后，将结果实时推送到手机端（PushPlus/Server酱）。
+企业规范：企业微信机器人消息已按需暂时注释，避免打扰群内同事。
 """
 
 import requests
@@ -10,12 +11,12 @@ from config.settings import settings, logger
 
 
 class Notifier:
-    """手机端状态通知推送器"""
+    """移动端消息通知中心"""
 
     @staticmethod
-    def send_pushplus(title: str, content_html: str) -> bool:
+    def send_pushplus(title: str, content: str) -> bool:
         """
-        通过 PushPlus 推送加 发送手机微信通知
+        通过 PushPlus 推送加 发送个人手机微信通知
         用户在手机微信关注 PushPlus 公众号即可直接收到卡片通知
         """
         if not settings.PUSHPLUS_TOKEN:
@@ -25,8 +26,8 @@ class Notifier:
         payload = {
             "token": settings.PUSHPLUS_TOKEN,
             "title": title,
-            "content": content_html,
-            "template": "html"
+            "content": content,
+            "template": "html" if "<" in content else "txt"
         }
         try:
             resp = requests.post(url, json=payload, timeout=10)
@@ -42,9 +43,7 @@ class Notifier:
 
     @staticmethod
     def send_serverchan(title: str, desp: str) -> bool:
-        """
-        通过 Server酱 发送手机微信通知
-        """
+        """通过 Server酱 发送手机微信通知"""
         if not settings.SERVERCHAN_KEY:
             return False
 
@@ -69,53 +68,49 @@ class Notifier:
     def send_wechat_work(markdown_text: str) -> bool:
         """
         向企业微信群机器人推送消息
+        【暂时注释】按企业通用规范与指令，暂时禁用向企业微信群发消息，避免打扰群内同事
         """
-        if not settings.WECHAT_WORK_WEBHOOK:
-            return False
+        # =========================================================================
+        # [暂缓启用] 如后续需要企业微信群机器人，解除以下注释即可：
+        #
+        # if not settings.WECHAT_WORK_WEBHOOK:
+        #     return False
+        # payload = {
+        #     "msgtype": "markdown",
+        #     "markdown": {"content": markdown_text}
+        # }
+        # try:
+        #     resp = requests.post(settings.WECHAT_WORK_WEBHOOK, json=payload, timeout=10)
+        #     if resp.json().get("errcode") == 0:
+        #         logger.info("企业微信群通知发送成功")
+        #         return True
+        # except Exception as e:
+        #     logger.error(f"企业微信推送失败: {e}")
+        # =========================================================================
+        logger.info("企业微信群通知当前处于暂时停用/注释状态，已跳过发送。")
+        return False
 
-        payload = {
-            "msgtype": "markdown",
-            "markdown": {
-                "content": markdown_text
-            }
-        }
-        try:
-            resp = requests.post(settings.WECHAT_WORK_WEBHOOK, json=payload, timeout=10)
-            data = resp.json()
-            if data.get("errcode") == 0:
-                logger.info("企业微信群通知发送成功")
-                return True
-            else:
-                logger.warning(f"企业微信推送失败: {data.get('errmsg')}")
-        except Exception as e:
-            logger.error(f"企业微信推送网络失败: {e}")
+    @classmethod
+    def send_all(cls, title: str, content: str):
+        """
+        通用多通道通知入口
+        """
+        # 1. 优先尝试 PushPlus 个人通知
+        if cls.send_pushplus(title, content):
+            return True
+
+        # 2. 备用 Server酱
+        if cls.send_serverchan(title, content):
+            return True
+
+        # 3. 企业微信群（当前处于注释状态）
+        # cls.send_wechat_work(content)
+
         return False
 
     @classmethod
     def notify_publish_success(cls, article_title: str, digest: str, media_id: str):
-        """
-        触发多渠道综合通知：发布到草稿箱成功
-        """
+        """发布到微信草稿箱成功的通知"""
         title = f"📢【局势洞见】今日草稿已就绪：{article_title[:20]}"
-        body_html = f"""
-        <div style="font-family: sans-serif; line-height: 1.6;">
-            <h3 style="color: #1a365d;">今日舆情洞见文章已成功写入微信草稿箱</h3>
-            <p><strong>文章标题：</strong>{article_title}</p>
-            <p><strong>核心摘要：</strong>{digest}</p>
-            <p><strong>草稿 Media ID：</strong><code>{media_id}</code></p>
-            <p style="color: #2b6cb0; font-size: 13px;">
-                💡 提示：您现在可以打开手机「订阅号助手」App，或登录微信公众平台后台，直接进行预览或一键群发。
-            </p>
-        </div>
-        """
-        # 尝试通过配置的通知渠道发送
-        sent = False
-        if cls.send_pushplus(title, body_html):
-            sent = True
-        if cls.send_serverchan(title, f"### {article_title}\n\n{digest}\n\n请前往手机微信订阅号助手一键发布。"):
-            sent = True
-        if cls.send_wechat_work(f"### 📢 今日微信文章已入草稿箱\n> **标题**：{article_title}\n> **摘要**：{digest}\n> 请在手机订阅号助手点击群发。"):
-            sent = True
-
-        if not sent:
-            logger.info("未配置任何移动端通知渠道（PushPlus/Server酱），已跳过手机提醒。")
+        body_text = f"文章标题：{article_title}\n摘要：{digest}\nMedia ID：{media_id}\n\n请在手机「订阅号助手」App 中审核群发！"
+        cls.send_all(title, body_text)

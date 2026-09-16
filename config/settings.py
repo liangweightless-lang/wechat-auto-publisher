@@ -19,14 +19,17 @@ else:
     # 尝试加载父级或系统环境变量
     load_dotenv()
 
-# 日志格式化配置
+# 企业通用日志目录配置
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
 LOG_FORMAT = "%(asctime)s - [%(levelname)s] - [%(name)s]: %(message)s"
 logging.basicConfig(
     level=logging.INFO,
     format=LOG_FORMAT,
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(BASE_DIR / "publisher.log", encoding="utf-8")
+        logging.FileHandler(LOG_DIR / "app.log", encoding="utf-8")
     ]
 )
 logger = logging.getLogger("WeChatPublisher")
