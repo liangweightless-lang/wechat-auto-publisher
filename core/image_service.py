@@ -23,7 +23,7 @@ class ImageService:
     @staticmethod
     def generate_ai_flux_image(prompt: str, output_path: str = "assets/flux_illustration.jpg") -> Optional[str]:
         """
-        调用 SiliconFlow 顶级的 FLUX.1 文生图模型生成电影级写实插图
+        调用 SiliconFlow Kwai-Kolors/Kolors 顶级文生图模型生成电影级写实插图
         """
         api_key = settings.LLM_API_KEY
         if not api_key:
@@ -39,31 +39,30 @@ class ImageService:
         }
 
         # 增强提示词，注入冷色调军事新闻纪实摄影质感
-        enhanced_prompt = f"{prompt}, professional military documentary photography, cinematic 8k, detailed, realistic, cold color grading, award winning journalism"
+        enhanced_prompt = f"{prompt}，军事纪实摄影，冷色调，超高清，8k细节，真实大片质感"
 
         payload = {
-            "model": "black-forest-labs/FLUX.1-schnell",
+            "model": "Kwai-Kolors/Kolors",
             "prompt": enhanced_prompt,
-            "image_size": "1024x576",  # 16:9 宽幅视觉
-            "batch_size": 1,
-            "num_inference_steps": 4
+            "image_size": "1024x1024",
+            "batch_size": 1
         }
 
-        logger.info(f"正在调用 FLUX.1 生成电影级战场配图: {prompt[:30]}...")
+        logger.info(f"正在调用 Kolors 生成电影级战场配图: {prompt[:30]}...")
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=40)
+            resp = requests.post(url, headers=headers, json=payload, timeout=45)
             data = resp.json()
             if "images" in data and len(data["images"]) > 0:
                 img_url = data["images"][0]["url"]
-                img_resp = requests.get(img_url, timeout=20)
+                img_resp = requests.get(img_url, timeout=25)
                 with open(out, "wb") as f:
                     f.write(img_resp.content)
-                logger.info(f"🎉 FLUX.1 电影级战场配图生成成功: {out}")
+                logger.info(f"🎉 电影级战场配图生成成功: {out}")
                 return str(out)
             else:
-                logger.warning(f"FLUX.1 出图返回信息: {data}")
+                logger.warning(f"生图返回信息: {data}")
         except Exception as e:
-            logger.warning(f"调用 FLUX.1 出图失败: {e}")
+            logger.warning(f"调用 AI 出图失败: {e}")
 
         return None
 
