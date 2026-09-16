@@ -20,6 +20,45 @@ from config.settings import settings, logger
 class ImageService:
     """文章插图全流程调度器"""
 
+    @classmethod
+    def generate_topic_image(
+        cls,
+        topic: str,
+        article_summary: str = "",
+        output_path: str = "assets/flux_illustration.jpg"
+    ) -> str:
+        """
+        综合生成或匹配话题图片（三重容灾保障）：
+        1. 调度 Kwai-Kolors 电影级文生图；
+        2. 若失败，降级合成战术态势图；
+        3. 若仍失败，使用 assets/default_cover.jpg 官方保底封面。
+        """
+        # 1. 提炼视觉生图提示词
+        clean_topic = re.sub(r"[^\w\s\u4e00-\u9fa5]", "", topic)
+        prompt = f"现代防务军事冲突，{clean_topic}，战舰与反舰导弹防空拦截，战场真实写实大片"
+        
+        ai_img = cls.generate_ai_flux_image(prompt=prompt, output_path=output_path)
+        if ai_img and Path(ai_img).exists() and Path(ai_img).stat().st_size > 1024:
+            return ai_img
+
+        # 2. 降级：战术雷达态势图
+        logger.info("AI生图未就绪，启用战术态势图合成引擎保底...")
+        tactical_img = cls.generate_tactical_infographic(
+            title=clean_topic,
+            label="战役推演",
+            output_path="assets/tactical_infographic.jpg"
+        )
+        if tactical_img and Path(tactical_img).exists():
+            return tactical_img
+
+        # 3. 终极大保底
+        default_cover = Path("assets/default_cover.jpg")
+        if default_cover.exists():
+            return str(default_cover)
+
+        return str(output_path)
+
+
     @staticmethod
     def generate_ai_flux_image(prompt: str, output_path: str = "assets/flux_illustration.jpg") -> Optional[str]:
         """

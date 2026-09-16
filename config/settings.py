@@ -41,7 +41,8 @@ class Settings:
     # 微信公众平台凭据
     WECHAT_APPID: str = os.getenv("WECHAT_APPID", "").strip()
     WECHAT_APPSECRET: str = os.getenv("WECHAT_APPSECRET", "").strip()
-    WECHAT_DEFAULT_AUTHOR: str = os.getenv("WECHAT_DEFAULT_AUTHOR", "舆情洞见").strip()
+    WECHAT_DEFAULT_AUTHOR: str = os.getenv("WECHAT_DEFAULT_AUTHOR", "局势洞见").strip()
+    WECHAT_AUTHOR: str = os.getenv("WECHAT_AUTHOR", WECHAT_DEFAULT_AUTHOR).strip()
 
     # 大模型 API 配置 (支持兼容 OpenAI 接口规范的各类模型)
     LLM_API_KEY: str = os.getenv("LLM_API_KEY", "").strip()

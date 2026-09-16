@@ -178,17 +178,22 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             digest = article_data.get("digest", "观察全球防务与地缘博弈。")
             md_content = article_data.get("markdown_content", "")
 
-            # 2. 生成配图 (快手可图)
-            img_path = ImageService.generate_topic_image(
-                topic=title,
-                article_summary=digest
-            )
-            cover_path = CoverGenerator.crop_to_wechat_ratio(img_path)
+            # 2. 生成配图 (快手可图，带全套保底)
+            try:
+                img_path = ImageService.generate_topic_image(
+                    topic=title,
+                    article_summary=digest
+                )
+                cover_path = CoverGenerator.crop_to_wechat_ratio(img_path)
+            except Exception as e_img:
+                logger.warning(f"配图生成异常，启用保底封面: {e_img}")
+                cover_path = str(BASE_DIR / "assets" / "default_cover.jpg")
 
             # 3. 微信专属内联样式排版
+            author_name = getattr(settings, "WECHAT_AUTHOR", getattr(settings, "WECHAT_DEFAULT_AUTHOR", "局势洞见"))
             html_content = WeChatFormatter.format_to_wechat_html(
                 markdown_text=md_content,
-                author=settings.WECHAT_AUTHOR
+                author=author_name
             )
 
             # 统计字数
