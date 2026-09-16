@@ -293,7 +293,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             outline: none;
             margin-top: 8px;
         }
-        .topic-textarea:focus { border-color: var(--primary); }
+        .topic-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,0.25); }
+        .quick-chip {
+            background: rgba(37, 99, 235, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #93c5fd;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            white-space: nowrap;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+        .quick-chip:active { background: #2563eb; color: #ffffff; }
+
 
         /* 撰写与配图主按钮 */
         .btn-generate {
@@ -526,12 +540,32 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 <div style="color: #60a5fa; text-align: center; padding: 16px; font-size: 13px;">正在探测最新战区情报...</div>
             </div>
 
-            <!-- 自定义研判焦点输入 -->
-            <div style="margin-top: 14px; border-top: 1px dashed var(--border-color); padding-top: 12px;">
-                <div style="font-size: 13px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px;">
-                    ✍️ 自定义焦点话题与研究指引：
+            <!-- 自定义研判焦点输入 (多行自适应与快捷指令) -->
+            <div style="margin-top: 16px; border-top: 1px dashed var(--border-color); padding-top: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="font-size: 13.5px; font-weight: 700; color: #93c5fd; display: flex; align-items: center; gap: 6px;">
+                        <span>✍️ 焦点话题与研判指引</span>
+                        <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">(多行自适应展开)</span>
+                    </div>
+                    <button type="button" onclick="clearTopicInput()" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer;">
+                        ✕ 一键清空
+                    </button>
                 </div>
-                <textarea class="topic-textarea" id="mobileTopicInput" rows="3" placeholder="从上方情报池点选，或直接输入焦点（例如：也门胡塞武装针对红海商船新一轮袭扰的战术突破与美航母困境）"></textarea>
+
+                <!-- 快捷指令标签 -->
+                <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 4px; scrollbar-width: none;">
+                    <span class="quick-chip" onclick="appendInstruction('重点拆解攻防武器型号与拦截效费比')">+ 硬核武器对抗</span>
+                    <span class="quick-chip" onclick="appendInstruction('重点分析苏伊士运河通行量与国际油价外溢影响')">+ 航运油价冲击</span>
+                    <span class="quick-chip" onclick="appendInstruction('重点推演美军航母与多国护航联盟的现实困局')">+ 美军护航困境</span>
+                    <span class="quick-chip" onclick="appendInstruction('梳理也门南北分立与沙特十年军事行动历史宿怨')">+ 战史百年宿怨</span>
+                </div>
+
+                <div style="position: relative;">
+                    <textarea class="topic-textarea" id="mobileTopicInput" rows="3" 
+                        oninput="autoResizeTextarea(this)" 
+                        placeholder="可直接点选上方情报，或长篇输入您的研究方向与补充指引（支持多行输入与自动展开）..."></textarea>
+                    <div id="charCount" style="text-align: right; font-size: 11px; color: #64748b; margin-top: 4px;">0 字</div>
+                </div>
             </div>
         </div>
 
@@ -661,7 +695,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                         const item = document.createElement('div');
                         item.className = 'topic-item';
                         item.onclick = () => {
-                            document.getElementById('mobileTopicInput').value = t.title;
+                            const inp = document.getElementById('mobileTopicInput'); inp.value = t.title; autoResizeTextarea(inp);
                             showToast("已填入焦点话题！");
                             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                         };
@@ -746,6 +780,33 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 modal.style.display = 'none';
                 alert("网络连接异常: " + err);
             }
+        }
+
+        
+        function autoResizeTextarea(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.max(76, Math.min(textarea.scrollHeight, 220)) + 'px';
+            const len = textarea.value.trim().length;
+            const countEl = document.getElementById('charCount');
+            if (countEl) countEl.innerText = len + ' 字';
+        }
+
+        function clearTopicInput() {
+            const input = document.getElementById('mobileTopicInput');
+            input.value = '';
+            autoResizeTextarea(input);
+            showToast("已清空研判输入框");
+        }
+
+        function appendInstruction(text) {
+            const input = document.getElementById('mobileTopicInput');
+            if (input.value.trim()) {
+                input.value += '\n【研判侧重】：' + text;
+            } else {
+                input.value = '【研判侧重】：' + text;
+            }
+            autoResizeTextarea(input);
+            showToast("已追加专业研判要求！");
         }
 
         function copyWechatHtml() {
