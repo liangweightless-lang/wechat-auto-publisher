@@ -176,14 +176,21 @@ def main():
     parser.add_argument("--topic", "-t", type=str, help="直接指定热点话题/研判方向")
     parser.add_argument("--cover", "-c", type=str, help="指定封面图片路径 (默认自动生成)")
     parser.add_argument("--dry-run", action="store_true", help="本地预览调试模式，不向微信上传")
+    parser.add_argument("--web", action="store_true", help="启动可视化 Web 控制台服务")
 
     args = parser.parse_args()
 
+    if args.web:
+        from web_server import run_server
+        run_server()
+        return
+
     if not any([args.file, args.url, args.topic]):
         print("\n使用示例：")
-        print("1. 从 PDF 报告生成: python main.py --file /path/to/胡塞武装与沙特冲突舆情报告.pdf")
-        print("2. 从热点话题生成: python main.py --topic '曼德海峡地缘博弈与美军航母困境'")
-        print("3. 本地仅排版预览: python main.py --topic '美军间谍船遭袭事件' --dry-run\n")
+        print("1. 启动可视化网页控制台: python main.py --web")
+        print("2. 从 PDF 报告生成: python main.py --file /path/to/胡塞武装与沙特冲突舆情报告.pdf")
+        print("3. 从热点话题生成: python main.py --topic '曼德海峡地缘博弈与美军航母困境'")
+        print("4. 本地仅排版预览: python main.py --topic '美军间谍船遭袭事件' --dry-run\n")
         parser.print_help()
         sys.exit(1)
 
