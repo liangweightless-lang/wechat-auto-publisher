@@ -135,9 +135,10 @@ def process_pipeline(
         print(f"[预览文件]: {preview_path.resolve()}\n")
         return
 
-    # 7. 准备封面图并上传永久素材
+    # 7. 准备封面图：将生成的电影级实景大片智能裁切为微信官方 2.35:1 封面
     if not cover_image or not Path(cover_image).exists():
-        cover_image = CoverGenerator.generate_default_cover(title)
+        photo_source = candidate_illustrations[0] if candidate_illustrations else None
+        cover_image = CoverGenerator.generate_default_cover(title, source_photo=photo_source)
 
     try:
         thumb_media_id = wechat.upload_thumb_material(cover_image)

@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 微信图文封面生成模块
-职责：在未提供指定封面时，自动生成一张符合微信最佳比例 (2.35:1) 的极简深海蓝智库质感封面图。
+职责：
+1. 优先将 AI 生成的好莱坞电影级战场实景照片，智能裁切为微信官方 2.35:1 (900x383) 黄金大图比例；
+2. 注入电影级暗角与智库微标，打造极具视觉冲击力的大片封面。
 """
 
 from pathlib import Path
@@ -12,68 +14,76 @@ class CoverGenerator:
     """文章封面图生成工具"""
 
     @staticmethod
-    def generate_default_cover(title: str, output_path: str = "assets/default_cover.jpg") -> str:
+    def crop_to_wechat_ratio(image_path: str, output_path: str = "assets/article_cover.jpg") -> str:
         """
-        生成或确保有一张可用的封面图 (900x383 像素，微信 2.35:1 官方比例)
+        将任意高分辨率实景照片裁切为微信官方封面最佳比例 2.35:1 (900 x 383)
         """
+        img_p = Path(image_path)
+        if not img_p.exists():
+            return ""
+
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            from PIL import Image, ImageDraw, ImageFont
+            from PIL import Image, ImageEnhance, ImageDraw, ImageFont
 
-            # 微信官方大图比例 2.35:1 (推荐 900 x 383)
-            width, height = 900, 383
-            # 深海冷黑质感底色
-            image = Image.new("RGB", (width, height), color="#14213d")
-            draw = ImageDraw.Draw(image)
+            with Image.open(img_p) as im:
+                im = im.convert("RGB")
+                orig_w, orig_h = im.size
 
-            # 绘制极简科技边框装饰线
-            draw.rectangle([(20, 20), (width - 20, height - 20)], outline="#2a4365", width=2)
-            draw.rectangle([(24, 24), (width - 24, height - 24)], outline="#1e293b", width=1)
+                # 目标微信官方大图比例 2.35:1
+                target_w, target_h = 940, 400
+                target_ratio = target_w / target_h
+                orig_ratio = orig_w / orig_h
 
-            # 左上角标识
-            draw.text((40, 40), "局势洞见 | 深度观察", fill="#90cdf4")
+                if orig_ratio > target_ratio:
+                    # 原图太宽，按高度裁剪两边
+                    new_w = int(orig_h * target_ratio)
+                    left = (orig_w - new_w) // 2
+                    im_cropped = im.crop((left, 0, left + new_w, orig_h))
+                else:
+                    # 原图太高，居中偏上裁剪
+                    new_h = int(orig_w / target_ratio)
+                    top = max(0, (orig_h - new_h) // 3)  # 居中偏上，保留焦点
+                    im_cropped = im.crop((0, top, orig_w, top + new_h))
 
-            # 绘制中心主标题（若有中文字体则绘制，无中文字体则绘制几何高质感装饰）
-            # 尝试在 macOS / Linux 上寻找标准字体
-            font_candidates = [
-                "/System/Library/Fonts/PingFang.ttc",
-                "/System/Library/Fonts/STHeiti Light.ttc",
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
-            ]
-            font = None
-            for fc in font_candidates:
-                if Path(fc).exists():
-                    try:
-                        font = ImageFont.truetype(fc, 36)
-                        break
-                    except Exception:
-                        pass
+                im_resized = im_cropped.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
-            if font:
-                # 简单截断换行
-                display_title = title if len(title) <= 18 else title[:18] + "..."
-                draw.text((40, 160), display_title, font=font, fill="#ffffff")
-            else:
-                draw.text((40, 160), "STRATEGIC INSIGHT", fill="#ffffff")
+                # 电影感微调：适度增加对比度，打造冷色调胶片质感
+                enhancer = ImageEnhance.Contrast(im_resized)
+                im_final = enhancer.enhance(1.08)
 
-            image.save(str(out), "JPEG", quality=95)
-            logger.info(f"封面图生成成功: {out}")
-            return str(out)
+                # 在左上角打上精美极简角标：局势洞见
+                draw = ImageDraw.Draw(im_final)
+                # 绘制半透明黑色渐变遮罩保护顶部文字
+                draw.rectangle([(0, 0), (target_w, 48)], fill=(10, 15, 28))
+                draw.text((24, 14), "【局势洞见】前沿战术与防务深研", fill="#e2e8f0")
 
-        except ImportError:
-            logger.warning("Pillow 未安装，生成简易占位图片...")
-            # 纯色最小 JPEG 二进制占位
-            # 1x1 像素纯色 jpeg 基础字节
-            raw_jpeg = bytes.fromhex(
-                "ffd8ffe000104a46494600010101004800480000ffdb004300080606070605080707070909"
-                "080a0c140d0c0b0b0c1912130f141d1a1f1e1d1a1c1c20242e2720222c231c1c2837292c30"
-                "323434341f27393d38323c2e333431ffc0000b080001000101011100ffc4001f0000010501"
-                "010101010100000000000000000102030405060708090a0bffda0008010100003f007f00ff"
-                "d9"
-            )
-            with open(out, "wb") as f:
-                f.write(raw_jpeg)
-            return str(out)
+                im_final.save(str(out), "JPEG", quality=95)
+                logger.info(f"🎉 微信电影级大片封面裁切完成: {out}")
+                return str(out)
+
+        except Exception as e:
+            logger.warning(f"裁切大片封面失败: {e}")
+            return str(image_path)
+
+    @classmethod
+    def generate_default_cover(cls, title: str, source_photo: str = None, output_path: str = "assets/default_cover.jpg") -> str:
+        """
+        确保有一张极具视觉冲击力的电影级大片封面
+        """
+        # 如果有现成的实景大片照片，直接裁切为微信封面
+        if source_photo and Path(source_photo).exists():
+            cover_path = cls.crop_to_wechat_ratio(source_photo, output_path)
+            if cover_path:
+                return cover_path
+
+        # 尝试检查之前生成的战场照片
+        fallback_photo = Path("assets/flux_illustration.jpg")
+        if fallback_photo.exists():
+            cover_path = cls.crop_to_wechat_ratio(str(fallback_photo), output_path)
+            if cover_path:
+                return cover_path
+
+        return str(fallback_photo) if fallback_photo.exists() else ""
