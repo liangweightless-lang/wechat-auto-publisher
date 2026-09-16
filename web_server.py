@@ -546,31 +546,22 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 <div style="color: #60a5fa; text-align: center; padding: 16px; font-size: 13px;">正在探测最新战区情报...</div>
             </div>
 
-            <!-- 自定义研判焦点输入 (多行自适应与快捷指令) -->
-            <div style="margin-top: 16px; border-top: 1px dashed var(--border-color); padding-top: 14px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <div style="font-size: 13.5px; font-weight: 700; color: #93c5fd; display: flex; align-items: center; gap: 6px;">
-                        <span>✍️ 焦点话题与研判指引</span>
-                        <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">(多行自适应展开)</span>
+            <!-- 自定义焦点输入 -->
+            <div style="margin-top: 14px; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <div style="font-size: 13px; font-weight: 600; color: #cbd5e1;">
+                        ✍️ 焦点话题：
                     </div>
-                    <button type="button" onclick="clearTopicInput()" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer;">
-                        ✕ 一键清空
+                    <button type="button" onclick="clearTopicInput()" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #fca5a5; font-size: 11px; padding: 2px 7px; border-radius: 6px; cursor: pointer;">
+                        ✕ 清空
                     </button>
-                </div>
-
-                <!-- 快捷指令标签 -->
-                <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 4px; scrollbar-width: none;">
-                    <span class="quick-chip" onclick="appendInstruction('重点拆解攻防武器型号与拦截效费比')">+ 硬核武器对抗</span>
-                    <span class="quick-chip" onclick="appendInstruction('重点分析苏伊士运河通行量与国际油价外溢影响')">+ 航运油价冲击</span>
-                    <span class="quick-chip" onclick="appendInstruction('重点推演美军航母与多国护航联盟的现实困局')">+ 美军护航困境</span>
-                    <span class="quick-chip" onclick="appendInstruction('梳理也门南北分立与沙特十年军事行动历史宿怨')">+ 战史百年宿怨</span>
                 </div>
 
                 <div style="position: relative;">
                     <textarea class="topic-textarea" id="mobileTopicInput" rows="3" 
                         oninput="autoResizeTextarea(this)" 
-                        placeholder="可直接点选上方情报，或长篇输入您的研究方向与补充指引（支持多行输入与自动展开）..."></textarea>
-                    <div id="charCount" style="text-align: right; font-size: 11px; color: #64748b; margin-top: 4px;">0 字</div>
+                        placeholder="从上方情报池点选，或直接输入焦点话题..."></textarea>
+                    <div id="charCount" style="text-align: right; font-size: 11px; color: #64748b; margin-top: 2px;">0 字</div>
                 </div>
             </div>
         </div>
@@ -578,7 +569,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <!-- 启动深度生成大按钮 -->
         <button class="btn-generate" id="mobileGenBtn" onclick="triggerMobileGenerate()">
             <div class="spinner" id="mobileGenSpinner"></div>
-            <span id="mobileGenText">🚀 启动 1800 字官方战报深度研判并配图</span>
+            <span id="mobileGenText">🚀 开始深度研判并生成配图</span>
         </button>
     </div>
 
@@ -587,9 +578,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <!-- 统计与快捷操作栏 -->
         <div class="preview-meta-bar">
             <div>
-                <span style="color: #93c5fd; font-weight: 600;" id="statWordCount">1,850 字</span>
+                <span style="color: #93c5fd; font-weight: 600;" id="statWordCount">待生成</span>
                 <span style="color: #64748b; margin: 0 4px;">|</span>
-                <span style="color: #94a3b8;" id="statReadTime">预计阅读 4.5 分钟</span>
+                <span style="color: #94a3b8;" id="statReadTime">推文预览</span>
             </div>
             <button class="btn-copy-html" onclick="copyWechatHtml()">
                 <span>📋 一键复制微信富文本</span>
