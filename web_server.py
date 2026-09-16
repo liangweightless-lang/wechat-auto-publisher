@@ -528,6 +528,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <!-- 滑动分类标签 -->
             <div class="pill-scroll">
                 <div class="cat-chip active" onclick="selectCategory('all', this)">🌐 全域战略</div>
+                <div class="cat-chip" onclick="selectCategory('official', this)">🏛️ 官方公告战报</div>
                 <div class="cat-chip" onclick="selectCategory('middle_east', this)">🔴 红海中东</div>
                 <div class="cat-chip" onclick="selectCategory('eurasia', this)">🔵 俄乌欧亚</div>
                 <div class="cat-chip" onclick="selectCategory('tech', this)">🟢 硬核战法</div>
@@ -572,7 +573,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <!-- 启动深度生成大按钮 -->
         <button class="btn-generate" id="mobileGenBtn" onclick="triggerMobileGenerate()">
             <div class="spinner" id="mobileGenSpinner"></div>
-            <span id="mobileGenText">🚀 启动 3000 字智库深度研判并配图</span>
+            <span id="mobileGenText">🚀 启动 1800 字官方战报深度研判并配图</span>
         </button>
     </div>
 
@@ -581,9 +582,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <!-- 统计与快捷操作栏 -->
         <div class="preview-meta-bar">
             <div>
-                <span style="color: #93c5fd; font-weight: 600;" id="statWordCount">3,120 字</span>
+                <span style="color: #93c5fd; font-weight: 600;" id="statWordCount">1,850 字</span>
                 <span style="color: #64748b; margin: 0 4px;">|</span>
-                <span style="color: #94a3b8;" id="statReadTime">预计阅读 8 分钟</span>
+                <span style="color: #94a3b8;" id="statReadTime">预计阅读 4.5 分钟</span>
             </div>
             <button class="btn-copy-html" onclick="copyWechatHtml()">
                 <span>📋 一键复制微信富文本</span>

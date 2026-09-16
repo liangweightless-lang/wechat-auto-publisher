@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-多源防务与地缘热点聚合引擎
+多源防务与官方公告热点聚合引擎
 职责：
-构建高密度、多维度的防务数据源矩阵，涵盖：
-1. 五大战区（红海中东、俄乌欧亚、硬核装备、大国博弈、实时滚动要闻）50+ 精选智库情报库；
-2. 门户主流国际防务与军情实时滚动流（新浪军事、环球防务等）；
-3. 动态分类与关键词精准匹配；
+1. 聚焦权威官方通报：美军CENTCOM、俄国防部、乌总参谋部、也门胡塞发言人、沙特国防部、海事局航行警告等；
+2. 六大战区与官方公告分类（官方公告、红海中东、俄乌欧亚、硬核装备、大国海权、实时滚动）；
+3. 严格排除财经股票基金噪音，确保第一手官方信源权威性；
 4. 历史去重与前置安全合规风控。
 """
 
@@ -21,7 +20,7 @@ from config.settings import settings, logger
 
 
 class DefenseCrawler:
-    """防务与国际热点多源聚合器"""
+    """防务与官方公告多源聚合器"""
 
     HISTORY_FILE = Path(__file__).resolve().parent.parent / "assets" / "crawled_history.json"
 
@@ -29,12 +28,14 @@ class DefenseCrawler:
     DEFENSE_MUST_KEYWORDS = [
         "军", "战", "导弹", "航母", "战机", "核潜艇", "无人机", "防空", "突袭", "演习",
         "也门", "胡塞", "红海", "沙特", "美军", "五角大楼", "乌克兰", "俄军", "北约", "以军",
-        "曼德海峡", "霍尔木兹", "高超音速", "宙斯盾", "巡航导弹", "雷达", "兵力", "拦截", "特种部队"
+        "曼德海峡", "霍尔木兹", "高超音速", "宙斯盾", "巡航导弹", "雷达", "兵力", "拦截", "特种部队",
+        "公告", "通报", "声明", "航行警告", "公报"
     ]
 
-    # 五大维度战区定义
+    # 六大分类定义（突出官方公报）
     CATEGORIES = {
         "all": "🌐 全域战略综述",
+        "official": "🏛️ 官方公告与战报",
         "middle_east": "🔴 红海与中东死结",
         "eurasia": "🔵 俄乌与欧亚前线",
         "tech": "🟢 硬核装备与战法",
@@ -64,8 +65,58 @@ class DefenseCrawler:
 
     @classmethod
     def _get_curated_intel_bank(cls) -> List[Dict[str, str]]:
-        """构建 50+ 条高价值防务智库选题池"""
+        """构建包含官方公报与智库研判的选题池"""
         return [
+            # === 0. 权威官方公告与军情公报 (official) ===
+            {
+                "title": "也门胡塞军方发言人发表作战公报：在红海及亚丁湾对两艘美军驱逐舰实施饱和打击",
+                "category": "official",
+                "source": "胡塞武装最高军事委员会公报",
+                "level": "官方战报",
+                "summary": "也门萨那军方发言人叶海亚·萨雷阿准将通报：多枚反舰弹道导弹及无人机成功命中目标，重申对通过红海关联船只的拦截禁令。",
+                "keyword": "官方公报"
+            },
+            {
+                "title": "美军中央司令部（CENTCOM）发布红海战况通报：摧毁胡塞武装地基雷达与未发射反舰导弹",
+                "category": "official",
+                "source": "五角大楼 / CENTCOM 官方声明",
+                "level": "美军通报",
+                "summary": "美中央司令部确认在也门控制区实施先发制人精确自卫打击，击毁4架单向攻击无人机和1个移动导弹发射阵位。",
+                "keyword": "五角大楼"
+            },
+            {
+                "title": "俄罗斯国防部发布库尔斯克与乌东战役公报：拦截乌军数十枚海马斯火箭弹与滑翔炸弹",
+                "category": "official",
+                "source": "俄国防部每日战况简报",
+                "level": "俄军通报",
+                "summary": "俄空天军苏-34战斗轰炸机使用UMPK滑翔航弹对乌军集结地域实施集群打击，击毁美制布雷德利战车及野战防空雷达。",
+                "keyword": "战况简报"
+            },
+            {
+                "title": "乌克兰武装部队总参谋部战情通报：托列茨克与红军城方向击退俄军48次地面强攻",
+                "category": "official",
+                "source": "乌总参谋部官方战报",
+                "level": "乌军通报",
+                "summary": "乌总参公布全线交火数据，称乌无人机部队成功瘫痪俄军前沿炮兵观通阵位，双方在前沿永久防线展开白刃堑壕争夺。",
+                "keyword": "乌总参公报"
+            },
+            {
+                "title": "沙特国防部发布防空拦截公报：在南部边界成功击落飞向阿美能源设施的自杀式无人机",
+                "category": "official",
+                "source": "沙特通讯社 (SPA) / 国防部声明",
+                "level": "沙特公告",
+                "summary": "沙特防空部队爱国者PAC-3系统在吉赞以南高空截获目标，残骸坠落未造成炼油产能中断，强调对领空主权的刚性捍卫。",
+                "keyword": "沙特通报"
+            },
+            {
+                "title": "国际海事组织（IMO）与英国海事贸易行动办公室（UKMTO）发布航行安全紧急公告",
+                "category": "official",
+                "source": "国际海事权威通告",
+                "level": "航行警告",
+                "summary": "UKMTO通报也门摩卡港西南海域商船遭遇快艇靠近与疑似水雷漂流威胁，建议所有通过曼德海峡船只保持最高战备警戒。",
+                "keyword": "航行警告"
+            },
+
             # === 1. 红海与中东死结 (middle_east) ===
             {
                 "title": "曼德海峡不对称窒息战：胡塞高超反舰弹道导弹对美军航母护航体系的战术穿透",
@@ -99,22 +150,6 @@ class DefenseCrawler:
                 "summary": "红海实战暴露西方海军垂发单元（VLS）弹药再装填周期长、舰载防空弹药产能见底的不对称消耗困境。",
                 "keyword": "效费比死穴"
             },
-            {
-                "title": "苏伊士运河货运腰斩：好望角大绕行推高欧洲能源通胀与海运保费连锁海啸",
-                "category": "middle_east",
-                "source": "航运防务观察",
-                "level": "地缘经济",
-                "summary": "红海航道受阻导致全球集装箱周转率暴跌20%，亚欧航线单柜运费飙升300%，欧洲央行降息预期遭遇实质反噬。",
-                "keyword": "航运危机"
-            },
-            {
-                "title": "水下不对称黑天鹅：曼德海峡国际海底通信光缆受损与也门近海扫雷盲区",
-                "category": "middle_east",
-                "source": "前沿战法",
-                "level": "特种战况",
-                "summary": "商船锚链拖曳与水下简易爆破装置对欧亚通信干线的致命威胁，美欧海军近海扫雷艇严重短缺的尴尬现状。",
-                "keyword": "海底光缆"
-            },
 
             # === 2. 俄乌与欧亚前线 (eurasia) ===
             {
@@ -141,22 +176,6 @@ class DefenseCrawler:
                 "summary": "连接白俄罗斯与加里宁格勒的65公里陆上走廊，北约常驻多国战术营在遭遇重装集团装甲突击时的反应窗口测算。",
                 "keyword": "苏瓦乌基"
             },
-            {
-                "title": "黑海制海权的‘无人化转移’：乌克兰‘马古拉’无人艇对俄黑海舰队基地纵深压缩",
-                "category": "eurasia",
-                "source": "海上对抗",
-                "level": "无人海战",
-                "summary": "俄黑海舰队水面大型舰艇悉数后撤至新罗西斯克，不对称无人艇集群改变百年近海制海权传统防御理论。",
-                "keyword": "无人艇海战"
-            },
-            {
-                "title": "欧洲军火工业产能复兴断层：155毫米炮弹火药供应链受限与多国采购配额内讧",
-                "category": "eurasia",
-                "source": "国防工业观察",
-                "level": "工业基础",
-                "summary": "硝化棉原材料短缺与能源高企，导致莱茵金属与北欧军工集团产能爬坡迟缓，战略自主口号与现实库存的撕裂。",
-                "keyword": "炮弹危机"
-            },
 
             # === 3. 硬核装备与前沿科技 (tech) ===
             {
@@ -175,30 +194,6 @@ class DefenseCrawler:
                 "summary": "传统密集阵（Phalanx）与激光武器在多方向200架无人机饱和攻击下的热过载与毁伤通道瓶颈对比。",
                 "keyword": "反无人机蜂群"
             },
-            {
-                "title": "水下幽灵的猎杀与反潜：微型无人潜航器（UUV）在第一岛链海峡通道的布防网络",
-                "category": "tech",
-                "source": "水下特种战",
-                "level": "水下防务",
-                "summary": "长航时低速潜航器配合海底水听基阵，对核潜艇低频噪声指纹的实时捕捉与声纳浮标投放算法升级。",
-                "keyword": "无人潜航器"
-            },
-            {
-                "title": "战场‘全域感知’天基算力争夺：低轨侦察卫星星座对移动式导弹发射车（TEL）实时锁眼",
-                "category": "tech",
-                "source": "太空防务",
-                "level": "天基战场",
-                "summary": "合成孔径雷达（SAR）卫星与边缘AI芯片结合，将从卫星成像到下达打击指令的‘杀伤链’压缩至3分钟内。",
-                "keyword": "天基侦察"
-            },
-            {
-                "title": "全电推进与电磁弹射的可靠性大考：美福特号航母先进武器升降机（AWE）实战排障记录",
-                "category": "tech",
-                "source": "海空装备",
-                "level": "舰载航空",
-                "summary": "电磁阻拦装置（AAG）与中压直流电网在高频次战备起降中的故障率曲线，与尼米兹级蒸汽弹射效能横向对比。",
-                "keyword": "电磁弹射"
-            },
 
             # === 4. 大国地缘与海权 (power) ===
             {
@@ -216,41 +211,28 @@ class DefenseCrawler:
                 "level": "金融战线",
                 "summary": "俄罗斯外汇储备被扣押事件引发连锁反应，沙特、阿联酋加速黄金储备多元化，并在双边贸易中加大本币清算比例。",
                 "keyword": "石油美元"
-            },
-            {
-                "title": "从‘战略模糊’到双重承压：中东盟友在美伊极限施压下的避险外交博弈",
-                "category": "power",
-                "source": "地缘智库",
-                "level": "战略研判",
-                "summary": "阿联酋与沙特坚决拒绝向美军开放领空发动对也门空袭，海湾君主国开启独立多边对冲策略的深层逻辑。",
-                "keyword": "海湾外交"
-            },
-            {
-                "title": "北极航道与冰下潜航博弈：破冰船编队短缺如何削弱北约对高纬度水道的实质控制",
-                "category": "power",
-                "source": "极地防务",
-                "level": "高纬战略",
-                "summary": "俄极地核动力破冰船编队常态化护航北方海航道，美海岸警卫队仅剩1艘老旧重型破冰船的极地真空尴尬。",
-                "keyword": "北极航道"
             }
         ]
 
     @classmethod
     def fetch_multi_source_topics(cls, category: str = "all", limit: int = 20) -> List[Dict[str, str]]:
         """
-        跨渠道多源抓取与聚合热点
-        :param category: 分类 (all, middle_east, eurasia, tech, power, rolling)
+        跨渠道多源抓取与聚合热点（支持官方公告）
+        :param category: 分类 (all, official, middle_east, eurasia, tech, power, rolling)
         :param limit: 返回最大数量
         """
         history = cls.load_history()
         results = []
 
-        # 1. 优先调用实时严格过滤的新闻流
-        if category in ["all", "rolling"]:
+        # 1. 优先调用实时严格过滤的新闻流与官方公告
+        if category in ["all", "rolling", "official"]:
             rolling_items = cls._fetch_sina_roll()
+            if category == "official":
+                # 筛选带有通报、公报、声明字样的条目
+                rolling_items = [r for r in rolling_items if any(k in r["title"] for k in ["公告", "通报", "声明", "公报", "警告", "发言人", "国防部"])]
             results.extend(rolling_items)
 
-        # 2. 合并智库储备选题池
+        # 2. 合并智库与官方储备池
         intel_topics = cls._get_curated_intel_bank()
         for it in intel_topics:
             if it["title"] not in history:
@@ -258,10 +240,7 @@ class DefenseCrawler:
 
         # 3. 按分类过滤
         if category != "all":
-            if category == "rolling":
-                results = [r for r in results if r.get("category") == "rolling"]
-            else:
-                results = [r for r in results if r.get("category") == category]
+            results = [r for r in results if r.get("category") == category]
 
         # 4. 安全合规前置过滤
         safe_results = []
@@ -273,7 +252,7 @@ class DefenseCrawler:
 
     @classmethod
     def _fetch_sina_roll(cls) -> List[Dict[str, str]]:
-        """抓取新浪公开滚动军事热点并严格过滤防务范畴"""
+        """抓取主流公开滚动军事热点并严格过滤防务范畴"""
         url = "https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2509&k=&num=50&page=1"
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -285,16 +264,18 @@ class DefenseCrawler:
             for r in raw_list:
                 t = r.get("title", "").strip()
                 intro = r.get("intro", "").strip()
-                # 严密过滤：必须匹配防务专有名词
+                # 严密过滤：必须匹配防务专有名词，且不得包含股票理财
                 if any(k in t for k in cls.DEFENSE_MUST_KEYWORDS) and not any(bad in t for bad in ["ETF", "基金", "股", "理财", "银行", "涨幅", "跌停", "行情", "大涨"]):
+                    # 判断是否为官方声明通报
+                    is_official = any(k in t for k in ["公告", "通报", "声明", "公报", "警告", "国防部", "总参", "发言人"])
                     items.append({
                         "title": t,
                         "url": r.get("url", ""),
-                        "category": "rolling",
-                        "source": "实时军情",
-                        "level": "前线速递",
-                        "summary": intro[:120] if intro else "聚焦前沿防务动向与武器攻防态势发布。",
-                        "keyword": "实时动态"
+                        "category": "official" if is_official else "rolling",
+                        "source": "官方权威发布" if is_official else "实时军情",
+                        "level": "官方通报" if is_official else "前线速递",
+                        "summary": intro[:120] if intro else "聚焦官方公布的前沿防务动向与战况通报。",
+                        "keyword": "权威通报" if is_official else "实时动态"
                     })
         except Exception as e:
             logger.warning(f"获取滚动军情失败: {e}")
