@@ -85,12 +85,19 @@ def process_pipeline(
             return
         wechat = WeChatClient()
 
-    # 5. 自动配图处理：如果素材无图，自动生成专业战术态势图
+    # 5. 自动配图处理：优先抽取原图 -> 其次 FLUX.1 电影级 AI 生图 -> 保底战术态势图
     if not candidate_illustrations:
-        logger.info("素材未检测到原生图表，自动生成智库战术态势图...")
-        tactical_img = ImageService.generate_tactical_infographic(title, label="战术态势推演")
-        if tactical_img and Path(tactical_img).exists():
-            candidate_illustrations.append(tactical_img)
+        # 尝试调用 FLUX.1 AI 生图
+        ai_flux_img = ImageService.generate_ai_flux_image(
+            prompt=f"Modern military conflict in Middle East, warship and drones in the Red Sea, photojournalism"
+        )
+        if ai_flux_img and Path(ai_flux_img).exists():
+            candidate_illustrations.append(ai_flux_img)
+        else:
+            logger.info("FLUX.1 暂未返回图片，自动生成智库战术态势图...")
+            tactical_img = ImageService.generate_tactical_infographic(title, label="战术态势推演")
+            if tactical_img and Path(tactical_img).exists():
+                candidate_illustrations.append(tactical_img)
 
     # 6. 将配图上传至微信 CDN 并插入正文（在 dry-run 模式下使用本地路径）
     if candidate_illustrations:
