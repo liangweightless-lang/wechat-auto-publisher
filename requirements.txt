@@ -1,0 +1,18 @@
+# 核心 HTTP 请求与 API 调用
+requests>=2.31.0
+
+# 环境变量管理
+python-dotenv>=1.0.0
+
+# PDF 与文档内容解析
+pypdf>=4.0.0
+
+# 网页内容提取
+trafilatura>=1.6.0
+beautifulsoup4>=4.12.0
+
+# Markdown 格式处理
+markdown>=3.5.0
+
+# 封面图生成
+pillow>=10.0.0
