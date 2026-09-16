@@ -18,7 +18,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 from config.settings import settings, logger
-from core import WeChatClient, ContentParser, AIWriter, WeChatFormatter, CoverGenerator, ImageService
+from core import WeChatClient, ContentParser, AIWriter, WeChatFormatter, CoverGenerator, ImageService, DefenseCrawler
 from notify import Notifier
 
 PORT = 8080
