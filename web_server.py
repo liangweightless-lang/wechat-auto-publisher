@@ -190,6 +190,24 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         .btn-success { background: var(--accent); }
         .btn-success:hover { background: #059669; }
 
+        /* 分类切换药丸标签 */
+        .cat-pill {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 4px 10px;
+            border-radius: 14px;
+            font-size: 11.5px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .cat-pill:hover, .cat-pill.active {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+            border-color: #3b82f6;
+        }
+
         /* 右侧手机预览框 */
         .preview-wrapper {
             background: var(--bg-card);
@@ -279,14 +297,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
             <div style="text-align: center; color: var(--text-muted); font-size: 12px;">— 或者 —</div>
 
-            <!-- 热点爬虫自动探测模块 -->
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px;">
+            <!-- 多源热点自动聚合探测模块 -->
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span style="font-size: 13px; font-weight: 600; color: #60a5fa;">📡 关键词自动爬虫监控热点</span>
-                    <button onclick="fetchHotTopics()" style="background: none; border: 1px solid rgba(96,165,250,0.4); color: #60a5fa; font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer;">刷新热点</button>
+                    <span style="font-size: 13px; font-weight: 600; color: #60a5fa;">📡 多源防务热点探测池</span>
+                    <button onclick="fetchHotTopics(currentCategory)" style="background: none; border: 1px solid rgba(96,165,250,0.4); color: #60a5fa; font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer;">刷新源</button>
                 </div>
-                <div id="hotList" style="display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
-                    <div style="color: var(--text-muted);">点击上方“刷新热点”即可自动抓取最新防务舆情...</div>
+                <!-- 多源分类切换标签 -->
+                <div style="display: flex; gap: 6px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 4px;">
+                    <button class="cat-pill active" onclick="switchCategory('all', this)">🔥 全部</button>
+                    <button class="cat-pill" onclick="switchCategory('middle_east', this)">🌊 红海/中东</button>
+                    <button class="cat-pill" onclick="switchCategory('tech', this)">⚡ 硬核装备</button>
+                    <button class="cat-pill" onclick="switchCategory('power', this)">🌐 大国博弈</button>
+                </div>
+                <div id="hotList" style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; max-height: 280px; overflow-y: auto;">
+                    <div style="color: var(--text-muted); text-align: center; padding: 12px;">正在加载多源防务数据...</div>
                 </div>
             </div>
 
@@ -335,42 +360,66 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     <script>
         let selectedFile = null;
+        let currentCategory = 'all';
 
-        // 抓取并展示防务热点
-        async function fetchHotTopics() {
+        function switchCategory(cat, btn) {
+            currentCategory = cat;
+            document.querySelectorAll('.cat-pill').forEach(el => el.classList.remove('active'));
+            btn.classList.add('active');
+            fetchHotTopics(cat);
+        }
+
+        // 跨渠道多源抓取并展示防务热点
+        async function fetchHotTopics(cat = 'all') {
             const listDiv = document.getElementById('hotList');
-            listDiv.innerHTML = '<div style="color: #60a5fa;">正在实时扫描各大防务与国际热点资讯流...</div>';
+            listDiv.innerHTML = '<div style="color: #60a5fa; padding: 10px; text-align: center;">正在聚合多源防务流数据...</div>';
             try {
-                const resp = await fetch('/api/crawl');
+                const resp = await fetch(`/api/crawl?category=${cat}`);
                 const data = await resp.json();
                 if (data.code === 200 && data.topics.length) {
                     listDiv.innerHTML = '';
                     data.topics.forEach(t => {
                         const row = document.createElement('div');
-                        row.style.padding = '8px 10px';
-                        row.style.background = 'rgba(255,255,255,0.05)';
-                        row.style.borderRadius = '6px';
+                        row.style.padding = '10px 12px';
+                        row.style.background = 'rgba(255,255,255,0.04)';
+                        row.style.border = '1px solid rgba(255,255,255,0.06)';
+                        row.style.borderRadius = '8px';
                         row.style.cursor = 'pointer';
-                        row.style.transition = 'background 0.2s';
-                        row.onmouseover = () => row.style.background = 'rgba(59,130,246,0.15)';
-                        row.onmouseout = () => row.style.background = 'rgba(255,255,255,0.05)';
+                        row.style.transition = 'all 0.2s';
+                        row.onmouseover = () => {
+                            row.style.background = 'rgba(59,130,246,0.12)';
+                            row.style.borderColor = '#3b82f6';
+                        };
+                        row.onmouseout = () => {
+                            row.style.background = 'rgba(255,255,255,0.04)';
+                            row.style.borderColor = 'rgba(255,255,255,0.06)';
+                        };
                         row.onclick = () => {
                             document.getElementById('topicInput').value = t.title;
+                            window.scrollTo({ top: document.getElementById('topicInput').offsetTop - 20, behavior: 'smooth' });
                         };
-                        row.innerHTML = `<span style="background: #1e3a8a; color: #93c5fd; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 6px;">#${t.matched_keyword}</span><strong>${t.title}</strong>`;
+                        const srcBadge = t.source || '防务观察';
+                        row.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; margin-bottom: 4px;">
+                                <span style="background: #1e3a8a; color: #93c5fd; padding: 1px 6px; border-radius: 4px; font-size: 10.5px;">#${t.keyword || '热点'}</span>
+                                <span style="color: #64748b; font-size: 11px;">${srcBadge}</span>
+                            </div>
+                            <div style="font-weight:600; color:#f1f5f9; line-height:1.4;">${t.title}</div>
+                            <div style="color: #94a3b8; font-size: 11.5px; margin-top: 4px; line-height: 1.4;">${t.summary || ''}</div>
+                        `;
                         listDiv.appendChild(row);
                     });
                 } else {
-                    listDiv.innerHTML = '<div style="color: var(--text-muted);">暂无新热点，可直接手动输入话题</div>';
+                    listDiv.innerHTML = '<div style="color: var(--text-muted); padding: 12px; text-align: center;">暂无该分类热点，可直接手动输入话题</div>';
                 }
             } catch (err) {
-                listDiv.innerHTML = '<div style="color: #ef4444;">热点抓取异常: ' + err + '</div>';
+                listDiv.innerHTML = '<div style="color: #ef4444; padding: 10px;">热点抓取异常: ' + err + '</div>';
             }
         }
 
         // 页面加载完毕后自动拉取一次热点
         window.addEventListener('DOMContentLoaded', () => {
-            fetchHotTopics();
+            fetchHotTopics('all');
         });
 
         // 拖拽文件事件
@@ -493,8 +542,10 @@ class WebRequestHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(HTML_TEMPLATE.encode("utf-8"))
         elif url_path == "/api/crawl":
-            # 抓取最新防务热点列表
-            topics = DefenseCrawler.fetch_hot_topics(limit=5)
+            # 抓取最新防务热点列表（支持分类查询）
+            query_params = parse_qs(urlparse(self.path).query)
+            cat = query_params.get("category", ["all"])[0]
+            topics = DefenseCrawler.fetch_multi_source_topics(category=cat, limit=6)
             self.send_json_response(200, "获取热点成功", {"topics": topics})
         elif url_path.startswith("/assets/"):
             # 返回静态资源（图片等）
