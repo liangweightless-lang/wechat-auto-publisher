@@ -6,6 +6,7 @@ from .formatter import WeChatFormatter
 from .cover_generator import CoverGenerator
 from .image_service import ImageService
 from .crawler import DefenseCrawler
+from .historical_retriever import HistoricalRetriever
 
 __all__ = [
     "WeChatClient",
@@ -16,4 +17,5 @@ __all__ = [
     "CoverGenerator",
     "ImageService",
     "DefenseCrawler",
+    "HistoricalRetriever"
 ]

@@ -1,3 +1,4 @@
+from typing import Any, Dict, Optional
 # -*- coding: utf-8 -*-
 """
 局势洞见 · RESTful API 与静态服务路由分发器 (App-Ready Backend)
@@ -103,7 +104,12 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
 
-        # 1. [API] 文章与配图生成: POST /api/generate
+        # 1. [API] 文章与配图生成 (流式思维与实时生成): POST /api/generate/stream
+        if path == "/api/generate/stream":
+            self._handle_generate_stream()
+            return
+
+        # 1.1 [API] 同步模式: POST /api/generate
         if path == "/api/generate":
             self._handle_generate()
             return
@@ -131,6 +137,131 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
         except Exception as e:
             logger.error(f"发送静态文件失败 {file_path}: {e}")
             self.send_error(500, "Internal Server Error")
+
+    def _handle_generate_stream(self):
+        """处理研判文章与配图的 SSE 流式生成 (包含 DeepSeek-R1 深度思考链与正文流)"""
+        try:
+            form = cgi.FieldStorage(
+                fp=self.rfile,
+                headers=self.headers,
+                environ={
+                    'REQUEST_METHOD': 'POST',
+                    'CONTENT_TYPE': self.headers['Content-Type'],
+                }
+            )
+
+            topic = form.getvalue("topic", "").strip()
+            raw_content = ""
+
+            if "file" in form and form["file"].filename:
+                file_item = form["file"]
+                upload_dir = BASE_DIR / "storage" / "uploads"
+                upload_dir.mkdir(parents=True, exist_ok=True)
+                saved_path = upload_dir / file_item.filename
+
+                with open(saved_path, "wb") as f:
+                    f.write(file_item.file.read())
+
+                logger.info(f"接收到流式生成用户上传文件: {saved_path}")
+                if saved_path.suffix.lower() == ".pdf":
+                    raw_content = ContentParser.extract_from_pdf(str(saved_path))
+                else:
+                    raw_content = ContentParser.extract_from_text_file(str(saved_path))
+
+            if not raw_content and topic:
+                raw_content = f"焦点研判事件与指示：{topic}"
+
+            if not raw_content:
+                self._send_json({"code": 400, "message": "未接收到有效的研判事件或文件内容"})
+                return
+
+            # 设置 SSE 响应头
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache, no-transform")
+            self.send_header("Connection", "keep-alive")
+            self.send_header("X-Accel-Buffering", "no")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+
+            def send_sse(event_type: str, data_obj: Any):
+                data_str = json.dumps(data_obj, ensure_ascii=False)
+                payload = f"event: {event_type}" + chr(10) + f"data: {data_str}" + chr(10) + chr(10)
+                self.wfile.write(payload.encode("utf-8"))
+                self.wfile.flush()
+
+            writer = AIWriter()
+            final_article = None
+
+            for evt in writer.generate_article_stream(raw_content=raw_content, user_focus=topic):
+                evt_type = evt.get("type")
+                evt_data = evt.get("data")
+
+                if evt_type == "status":
+                    send_sse("status", {"message": evt_data})
+                elif evt_type == "think":
+                    send_sse("think", {"text": evt_data})
+                elif evt_type == "content":
+                    send_sse("content", {"text": evt_data})
+                elif evt_type == "done":
+                    final_article = evt_data
+                elif evt_type == "error":
+                    send_sse("error", {"message": evt_data})
+                    return
+
+            if not final_article:
+                send_sse("error", {"message": "AI 模型未返回有效生成内容"})
+                return
+
+            title = final_article.get("title", "深度防务研判")
+            digest = final_article.get("digest", "观察全球防务与地缘博弈。")
+            md_content = final_article.get("markdown_content", "")
+
+            send_sse("status", {"message": "长文生成完毕，正在进行全自动军武配图与微信公众号专属内联排版..."})
+
+            # 配图生成
+            try:
+                img_path = ImageService.generate_topic_image(topic=title, article_summary=digest)
+                cover_path = CoverGenerator.crop_to_wechat_ratio(img_path)
+            except Exception as e_img:
+                logger.warning(f"配图生成异常，启用保底封面: {e_img}")
+                cover_path = str(BASE_DIR / "assets" / "default_cover.jpg")
+
+            # 微信公众号排版
+            author_name = getattr(settings, "WECHAT_AUTHOR", getattr(settings, "WECHAT_DEFAULT_AUTHOR", "局势洞见"))
+            html_content = WeChatFormatter.format_to_wechat_html(markdown_text=md_content, author=author_name)
+
+            clean_text = "".join(md_content.split())
+            word_count = len(clean_text)
+            read_time = max(1, round(word_count / 380))
+
+            CURRENT_CACHE["title"] = title
+            CURRENT_CACHE["digest"] = digest
+            CURRENT_CACHE["html_content"] = html_content
+            CURRENT_CACHE["markdown_content"] = md_content
+            CURRENT_CACHE["cover_image"] = cover_path
+            CURRENT_CACHE["word_count"] = word_count
+            CURRENT_CACHE["read_time"] = read_time
+
+            send_sse("done", {
+                "title": title,
+                "digest": digest,
+                "html_content": html_content,
+                "markdown_content": md_content,
+                "word_count": word_count,
+                "read_time": read_time,
+                "cover_image": cover_path,
+                "thinking": final_article.get("thinking", "")
+            })
+
+        except Exception as e:
+            logger.error(f"处理流式生成失败: {e}", exc_info=True)
+            try:
+                err_payload = "event: error" + chr(10) + f"data: {json.dumps({'message': str(e)})}" + chr(10) + chr(10)
+                self.wfile.write(err_payload.encode("utf-8"))
+                self.wfile.flush()
+            except Exception:
+                pass
 
     def _handle_generate(self):
         """处理研判文章与配图生成"""

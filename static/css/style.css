@@ -473,16 +473,17 @@ body {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* 思考浮层 */
+/* 现代化流式思考与生成监视中枢 */
 .stepper-mask {
     display: none;
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(8px);
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(10px);
     z-index: 200;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 16px;
     pointer-events: none;
 }
 .stepper-mask.active {
@@ -492,34 +493,152 @@ body {
 .stepper-box {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: 20px;
     width: 100%;
-    max-width: 380px;
+    max-width: 580px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
     padding: 24px;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.25);
+    animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.stepper-title { font-size: 16px; font-weight: 700; color: var(--text-title); text-align: center; margin-bottom: 16px; }
-.stepper-line {
+@keyframes modalPop {
+    from { opacity: 0; transform: scale(0.96) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.stepper-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 8px 0;
-    font-size: 13px;
-    color: var(--text-muted);
+    justify-content: space-between;
+    margin-bottom: 16px;
 }
-.stepper-line.active { color: var(--primary); font-weight: 600; }
-.stepper-line.done { color: var(--wechat); }
-.step-circle {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 1.5px solid currentColor;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
+.stepper-title {
+    font-size: 16px;
     font-weight: 700;
-    flex-shrink: 0;
+    color: var(--text-title);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.stepper-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--primary);
+    font-weight: 600;
+}
+.stepper-steps-compact {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+.step-chip {
+    flex: 1;
+    text-align: center;
+    padding: 6px 4px;
+    background: var(--bg-page);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.step-chip.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+    font-weight: 600;
+}
+.step-chip.done {
+    background: rgba(7, 193, 96, 0.1);
+    color: var(--wechat);
+    border-color: rgba(7, 193, 96, 0.3);
+    font-weight: 600;
+}
+
+/* 思考链折叠监视卡片 */
+.thinking-box {
+    background: var(--bg-page);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.thinking-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(0,0,0,0.02);
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-muted);
+    user-select: none;
+}
+.thinking-header:hover {
+    background: rgba(0,0,0,0.04);
+}
+.thinking-title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--text-title);
+}
+.pulsing-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+    animation: pulse 1.4s infinite;
+}
+@keyframes pulse {
+    0% { transform: scale(0.85); opacity: 0.5; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(0.85); opacity: 0.5; }
+}
+.thinking-content {
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 12px 14px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--text-body);
+    white-space: pre-wrap;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border);
+}
+
+/* 正文流式预览卡片 */
+.stream-content-box {
+    flex: 1;
+    min-height: 160px;
+    max-height: 260px;
+    overflow-y: auto;
+    background: var(--bg-page);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--text-body);
+    white-space: pre-wrap;
+}
+.stream-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 12px;
+    font-size: 12px;
+    color: var(--text-muted);
 }
 
 /* 居中 Toast */

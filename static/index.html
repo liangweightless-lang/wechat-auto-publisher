@@ -144,29 +144,50 @@
         </div>
     </div>
 
-    <!-- 进度弹层 -->
+    <!-- 现代化流式思考推演与正文生成中枢 -->
     <div class="stepper-mask" id="progressModal">
         <div class="stepper-box">
-            <div class="stepper-title">研判生产引擎运转中</div>
-            <div class="stepper-line" id="step1">
-                <div class="step-circle">1</div>
-                <div>官方战报交叉比对与前置风控</div>
+            <div class="stepper-header">
+                <div class="stepper-title">
+                    <span>🛡️ 智库推演中枢</span>
+                    <span class="stepper-badge" id="modalEngineBadge">DeepSeek-R1 推理流</span>
+                </div>
+                <div style="font-size: 11px; color: var(--text-light);" id="totalTimer">耗时 0s</div>
             </div>
-            <div class="stepper-line" id="step2">
-                <div class="step-circle">2</div>
-                <div>还原事件前世今生与冲突因果链</div>
+
+            <!-- 5步流水线指示器 -->
+            <div class="stepper-steps-compact">
+                <div class="step-chip active" id="step1">1. 战史底座检索</div>
+                <div class="step-chip" id="step2">2. 深度战局推演</div>
+                <div class="step-chip" id="step3">3. 长文流式输出</div>
+                <div class="step-chip" id="step4">4. 战地配图生成</div>
+                <div class="step-chip" id="step5">5. 微信CSS排版</div>
             </div>
-            <div class="stepper-line" id="step3">
-                <div class="step-circle">3</div>
-                <div>决战兵器谱与幕后国家技术溯源</div>
+
+            <!-- 🧠 深度思考链折叠面板 -->
+            <div class="thinking-box" id="thinkingBox">
+                <div class="thinking-header" onclick="toggleThinking()">
+                    <div class="thinking-title-row">
+                        <div class="pulsing-dot" id="thinkingDot"></div>
+                        <span>🧠 AI 深度战局推演 (Thinking Process)</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="thinkingTimeLabel" style="color: var(--primary); font-weight: 600;">推演中...</span>
+                        <span id="thinkingArrow">▼</span>
+                    </div>
+                </div>
+                <div class="thinking-content" id="thinkingText">正在检索历史战史底座，解析双方百年地缘宿怨与武器国家血统...</div>
             </div>
-            <div class="stepper-line" id="step4">
-                <div class="step-circle">4</div>
-                <div>快手可图生成 2.35:1 电影级战地大片</div>
+
+            <!-- 📝 实时长文流式预览框 -->
+            <div class="stream-content-box" id="streamContentBox">
+                <div id="streamText" style="color: var(--text-muted); font-style: italic;">等待深度推演完毕，研判长文将在此实时逐字打印...</div>
             </div>
-            <div class="stepper-line" id="step5">
-                <div class="step-circle">5</div>
-                <div>微信专属 Inline CSS 引擎排版装配</div>
+
+            <!-- 底部状态指示栏 -->
+            <div class="stream-status-bar">
+                <span id="streamStatusMsg">⏳ 正在初始化战略推演引擎...</span>
+                <span id="streamWordCount" style="font-weight: 600; color: var(--text-title);">已生成 0 字</span>
             </div>
         </div>
     </div>
