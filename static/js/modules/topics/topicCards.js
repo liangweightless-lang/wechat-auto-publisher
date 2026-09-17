@@ -6,95 +6,47 @@ import { toggleSelectNews, selectAllInCluster } from './topicSelector.js';
 
 export function renderSkeletonLoading() {
     return `
-    <!-- 顶部高阶雷达侦测态指示器 (带流光扫描线与脉冲光环) -->
-    <div class="feed-radar-loader">
-        <div class="radar-loader-line"></div>
-        <div class="radar-loader-content">
-            <div class="radar-loader-left">
-                <div class="radar-pulse-box">
-                    <span class="radar-ping-ring"></span>
-                    <i data-lucide="radar" class="radar-scan-anim"></i>
-                </div>
-                <div class="radar-loader-text">
-                    <div class="radar-loader-title">正在全域侦测国际战略情报...</div>
-                    <div class="radar-loader-sub">联合国新闻 · 俄罗斯塔斯社 · 官方权威通报跨网聚合中</div>
-                </div>
-            </div>
-            <div class="radar-loader-status">
-                <span class="status-dot-pulse"></span>
-                <span>实时侦测</span>
-            </div>
+    <div class="feed-top-loader">
+        <div class="feed-loader-spinner"></div>
+        <span>正在跨网聚合全网最新战略情报与官方通报...</span>
+    </div>
+
+    <div class="standard-skeleton-card">
+        <div class="skeleton-row">
+            <div class="skeleton-bar" style="width: 58px; height: 16px; border-radius: 10px;"></div>
+            <div class="skeleton-bar" style="width: 48px; height: 14px; border-radius: 4px;"></div>
+        </div>
+        <div class="skeleton-bar" style="width: 78%; height: 16px; margin-top: 2px;"></div>
+        <div class="skeleton-bar" style="width: 95%; height: 13px;"></div>
+        <div class="skeleton-row" style="margin-top: 4px;">
+            <div class="skeleton-bar" style="width: 90px; height: 12px;"></div>
+            <div class="skeleton-bar" style="width: 40px; height: 14px; border-radius: 8px;"></div>
         </div>
     </div>
 
-    <!-- 拟态流光骨架卡片 1 (第一项展开状态拟真) -->
-    <div class="skeleton-cluster-card">
-        <div class="skeleton-header-row">
-            <div class="skeleton-header-left">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="skeleton-shimmer skeleton-pill"></div>
-                    <div class="skeleton-shimmer" style="width: 130px; height: 16px; border-radius: 4px;"></div>
-                </div>
-                <div class="skeleton-shimmer skeleton-title-line"></div>
-                <div class="skeleton-shimmer skeleton-preview-line"></div>
-            </div>
-            <div class="skeleton-header-right">
-                <div class="skeleton-shimmer skeleton-time-pill"></div>
-                <div class="skeleton-shimmer skeleton-count-pill"></div>
-            </div>
+    <div class="standard-skeleton-card">
+        <div class="skeleton-row">
+            <div class="skeleton-bar" style="width: 50px; height: 16px; border-radius: 10px;"></div>
+            <div class="skeleton-bar" style="width: 42px; height: 14px; border-radius: 4px;"></div>
         </div>
-        <!-- 展开子项骨架 -->
-        <div class="skeleton-sub-box">
-            <div class="skeleton-sub-item">
-                <div class="skeleton-shimmer skeleton-checkbox"></div>
-                <div class="skeleton-sub-content">
-                    <div class="skeleton-shimmer" style="width: 82%; height: 14px; border-radius: 3px;"></div>
-                    <div class="skeleton-shimmer" style="width: 32%; height: 11px; border-radius: 3px;"></div>
-                </div>
-            </div>
-            <div class="skeleton-sub-item">
-                <div class="skeleton-shimmer skeleton-checkbox"></div>
-                <div class="skeleton-sub-content">
-                    <div class="skeleton-shimmer" style="width: 68%; height: 14px; border-radius: 3px;"></div>
-                    <div class="skeleton-shimmer" style="width: 38%; height: 11px; border-radius: 3px;"></div>
-                </div>
-            </div>
+        <div class="skeleton-bar" style="width: 70%; height: 16px; margin-top: 2px;"></div>
+        <div class="skeleton-bar" style="width: 88%; height: 13px;"></div>
+        <div class="skeleton-row" style="margin-top: 4px;">
+            <div class="skeleton-bar" style="width: 80px; height: 12px;"></div>
+            <div class="skeleton-bar" style="width: 36px; height: 14px; border-radius: 8px;"></div>
         </div>
     </div>
 
-    <!-- 拟态流光骨架卡片 2 -->
-    <div class="skeleton-cluster-card">
-        <div class="skeleton-header-row">
-            <div class="skeleton-header-left">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="skeleton-shimmer skeleton-pill" style="width: 52px;"></div>
-                    <div class="skeleton-shimmer" style="width: 110px; height: 16px; border-radius: 4px;"></div>
-                </div>
-                <div class="skeleton-shimmer" style="width: 72%; height: 16px; border-radius: 4px;"></div>
-                <div class="skeleton-shimmer skeleton-preview-line"></div>
-            </div>
-            <div class="skeleton-header-right">
-                <div class="skeleton-shimmer skeleton-time-pill"></div>
-                <div class="skeleton-shimmer skeleton-count-pill"></div>
-            </div>
+    <div class="standard-skeleton-card">
+        <div class="skeleton-row">
+            <div class="skeleton-bar" style="width: 62px; height: 16px; border-radius: 10px;"></div>
+            <div class="skeleton-bar" style="width: 45px; height: 14px; border-radius: 4px;"></div>
         </div>
-    </div>
-
-    <!-- 拟态流光骨架卡片 3 -->
-    <div class="skeleton-cluster-card">
-        <div class="skeleton-header-row">
-            <div class="skeleton-header-left">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="skeleton-shimmer skeleton-pill" style="width: 58px;"></div>
-                    <div class="skeleton-shimmer" style="width: 140px; height: 16px; border-radius: 4px;"></div>
-                </div>
-                <div class="skeleton-shimmer" style="width: 65%; height: 16px; border-radius: 4px;"></div>
-                <div class="skeleton-shimmer" style="width: 78%; height: 12px; border-radius: 4px;"></div>
-            </div>
-            <div class="skeleton-header-right">
-                <div class="skeleton-shimmer skeleton-time-pill"></div>
-                <div class="skeleton-shimmer skeleton-count-pill"></div>
-            </div>
+        <div class="skeleton-bar" style="width: 65%; height: 16px; margin-top: 2px;"></div>
+        <div class="skeleton-bar" style="width: 92%; height: 13px;"></div>
+        <div class="skeleton-row" style="margin-top: 4px;">
+            <div class="skeleton-bar" style="width: 70px; height: 12px;"></div>
+            <div class="skeleton-bar" style="width: 38px; height: 14px; border-radius: 8px;"></div>
         </div>
     </div>
     `;
