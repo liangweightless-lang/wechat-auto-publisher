@@ -81,6 +81,30 @@ export async function triggerMobileGenerate() {
     if (wordCountEl) wordCountEl.innerText = '已生成 0 字';
     setStepActive(1);
 
+    // 动态渲染已并网情报源卡片
+    const mergedCard = document.getElementById('mergedSourcesInfoCard');
+    if (mergedCard) {
+        if (state.selectedArticlesMap.size > 0) {
+            const list = Array.from(state.selectedArticlesMap.values());
+            mergedCard.style.display = 'block';
+            mergedCard.innerHTML = `
+                <div style="font-weight: 700; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; color: var(--primary);">
+                    <span>🔗 本次推演已并网 ${list.length} 份战报信源：</span>
+                    <span style="font-size: 10px; opacity: 0.8; background: rgba(37,99,235,0.15); padding: 1px 5px; border-radius: 3px;">交叉推演中</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 3px; max-height: 75px; overflow-y: auto;">
+                    ${list.map((a, idx) => `
+                        <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; color: var(--text-main);">
+                            ${idx + 1}. [${a.source || '公开战报'}] ${a.title}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            mergedCard.style.display = 'none';
+        }
+    }
+
     state.startTime = Date.now();
     if (state.totalTimerInterval) clearInterval(state.totalTimerInterval);
     state.totalTimerInterval = setInterval(() => {

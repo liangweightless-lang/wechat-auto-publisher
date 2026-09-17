@@ -4,7 +4,7 @@ import { refreshIcons } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 import { initTheme, toggleTheme } from './modules/theme/themeManager.js';
 import { fetchAndRenderTopics, toggleCluster, expandOfficialSources, filterByDynamicCategory, renderDynamicCategories } from './modules/topics/topicCards.js';
-import { toggleSelectNews, selectAllInCluster, selectTopic, updateSelectedUI } from './modules/topics/topicSelector.js';
+import { toggleSelectNews, selectAllInCluster, selectTopic, updateSelectedUI, showSelectedArticlesModal, closeSelectedArticlesModal, removeSelectedArticleByKey, clearAllSelectedArticles, startMergedGenerateFromModal } from './modules/topics/topicSelector.js';
 import { triggerMobileGenerate, toggleThinking, closeProgressModal } from './modules/generator/streamHandler.js';
 import { switchPlatform, copyActiveContent, openExternalChannel } from './modules/matrix/matrixView.js';
 import { openHistoryDrawer, closeHistoryDrawer, loadHistoryArticles, loadHistoryArticleDetail, showSourceNewsModal } from './modules/history/historyView.js';
@@ -234,6 +234,11 @@ window.app = {
     refreshCurrentFeed,
     toggleCluster,
     toggleSelectNews,
+    showSelectedArticlesModal,
+    closeSelectedArticlesModal,
+    removeSelectedArticleByKey,
+    clearAllSelectedArticles,
+    startMergedGenerateFromModal,
     selectAllInCluster,
     selectTopic,
     handleMobileFile,

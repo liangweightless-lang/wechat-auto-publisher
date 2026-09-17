@@ -415,9 +415,13 @@
 
     <!-- ======================= 多选同类新闻吸底浮动工具栏 ======================= -->
     <div class="multi-select-dock" id="multiSelectDock">
-        <div class="dock-left-info">
+        <div class="dock-left-info" onclick="window.app.showSelectedArticlesModal()" style="cursor: pointer; display: flex; align-items: center; gap: 6px;" title="点击展开查看勾选报道的详细清单与内容">
             <span class="dock-count-badge" id="selectedCountBadge">0</span>
             <span class="dock-desc">篇报道已勾选</span>
+            <span style="font-size: 11px; color: var(--primary); font-weight: 700; display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 4px; background: rgba(37,99,235,0.1); border: 1px solid rgba(37,99,235,0.2);">
+                <i data-lucide="list" style="width: 12px; height: 12px;"></i>
+                <span>点击看详情</span>
+            </span>
         </div>
         <button class="dock-action-btn" onclick="triggerMultiSelectGenerate()">
             <i data-lucide="sparkles" style="width: 14px; height: 14px; color: var(--primary);"></i>
@@ -472,6 +476,9 @@
                 <div class="step-chip" id="step5">5. 主题内联</div>
             </div>
 
+            <!-- 已并网多源战报清单卡片 (推演时动态展现) -->
+            <div id="mergedSourcesInfoCard" style="display: none; margin: 8px 0 10px 0; padding: 8px 12px; border-radius: 8px; background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.2); font-size: 11.5px; color: var(--text-main);"></div>
+
             <!-- 思考链面板 -->
             <div class="thinking-container">
                 <div class="thinking-header" onclick="toggleThinking()">
@@ -508,7 +515,7 @@
     <!-- 轻量级手机 Toast 提示条 -->
     <div class="toast-bar" id="mobileToast">提示信息</div>
 
-    <script type="module" src="/static/js/main.js?v=27.0"></script>
+    <script type="module" src="/static/js/main.js?v=28.0"></script>
     <script>
         if (window.lucide) {
             lucide.createIcons();
