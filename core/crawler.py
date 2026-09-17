@@ -165,7 +165,7 @@ class DefenseCrawler:
         3. 超时设置为 6.5s，避免大模型输出时因网络抖动被掐断
         """
         cls._load_translate_cache()
-        to_translate = [t for t in titles if cls._is_english(t) and t not in cls._TRANSLATE_CACHE][:20]
+        to_translate = [t for t in titles if cls._is_english(t) and t not in cls._TRANSLATE_CACHE][:50]
         results = {t: cls._TRANSLATE_CACHE[t] for t in titles if t in cls._TRANSLATE_CACHE}
         if not to_translate:
             return results
@@ -327,7 +327,7 @@ class DefenseCrawler:
         return cat
 
     @classmethod
-    def fetch_multi_source_topics(cls, category: str = "all", limit: int = 20) -> List[Dict[str, Any]]:
+    def fetch_multi_source_topics(cls, category: str = "all", limit: int = 150) -> List[Dict[str, Any]]:
         """
         跨渠道多源抓取热点并按四大垂直体系归类。
         优先级：① 联合国官方 ② 新华社英文官方 ③ 卫星社外网 ④ 今日头条热搜
@@ -480,32 +480,36 @@ class DefenseCrawler:
                 item_url = r.get("Url", "")
                 hot_val = r.get("HotValue", "")
 
-                is_defense = any(k in title for k in cls.get_all_defense_keywords())
+                if not title or len(title) < 5:
+                    continue
+
+                # 仅过滤无价值娱乐八卦，全量吸纳国内、科技、军事、国际、民生热搜
                 is_excluded = any(bad in title for bad in cls.EXCLUDE_KEYWORDS)
+                if is_excluded:
+                    continue
 
-                if is_defense and not is_excluded:
-                    hot_str = "高"
-                    if hot_val:
-                        try:
-                            val_num = int(hot_val)
-                            hot_str = f"{round(val_num / 10000)}万"
-                        except Exception:
-                            hot_str = str(hot_val)
+                hot_str = "高"
+                if hot_val:
+                    try:
+                        val_num = int(hot_val)
+                        hot_str = f"{round(val_num / 10000)}万"
+                    except Exception:
+                        hot_str = str(hot_val)
 
-                    cat = cls._classify_topic(title)
-                    items.append({
-                        "title": title,
-                        "url": item_url or f"https://www.toutiao.com/search?keyword={urllib.parse.quote(title)}",
-                        "source": "今日头条热点",
-                        "is_overseas": False,
-                        "pub_time": "今日最新",
-                        "hot": hot_str,
-                        "category": cat,
-                        "summary": f"{datetime.datetime.now().strftime('%Y年%m月')}头条实时防务热榜，热度：{hot_str}。"
-                    })
+                cat = cls._classify_topic(title)
+                items.append({
+                    "title": title,
+                    "url": item_url or f"https://www.toutiao.com/search?keyword={urllib.parse.quote(title)}",
+                    "source": "今日头条热点",
+                    "is_overseas": False,
+                    "pub_time": "今日最新",
+                    "hot": hot_str,
+                    "category": cat,
+                    "summary": f"头条热榜聚焦：{title}，全网热度：{hot_str}。"
+                })
         except Exception as e:
             logger.warning(f"抓取今日头条热搜失败: {e}")
-        return items
+        return items[:50]
 
     @classmethod
     def _fetch_un_news_en_official(cls) -> List[Dict[str, Any]]:
@@ -696,7 +700,7 @@ class DefenseCrawler:
                         })
         except Exception as e:
             logger.warning(f"新华社抓取异常: {e}")
-        return items[:25]
+        return items[:50]
 
     @classmethod
     def _fetch_people_official(cls) -> List[Dict[str, Any]]:
@@ -731,7 +735,7 @@ class DefenseCrawler:
                             })
         except Exception as e:
             logger.warning(f"人民网抓取异常: {e}")
-        return items[:25]
+        return items[:50]
 
     @classmethod
     def _fetch_cctv_official(cls) -> List[Dict[str, Any]]:
@@ -765,7 +769,7 @@ class DefenseCrawler:
                         })
         except Exception as e:
             logger.warning(f"央视/军网抓取异常: {e}")
-        return items[:20]
+        return items[:35]
 
 
     @classmethod
@@ -972,7 +976,7 @@ class DefenseCrawler:
     def _do_fetch_and_cache(cls, category: str, limit: int) -> List[Dict[str, Any]]:
         """真实执行全网抓取、聚类加权排序并按分类精准筛选返回 (保证任何模块均有丰富情报，绝不为空)"""
         # 全量抓取保证聚类视野宏观完整
-        raw_topics = cls.fetch_multi_source_topics(category="all", limit=max(limit * 2, 40))
+        raw_topics = cls.fetch_multi_source_topics(category="all", limit=max(limit, 150))
         all_clusters = cls.cluster_topics(raw_topics)
 
         # 若请求特定分类，进行精准过滤与兜底

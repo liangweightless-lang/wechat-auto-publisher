@@ -1,26 +1,27 @@
 # -*- coding: utf-8 -*-
 """
-多维场景 AI 生图与视觉配图服务模块
-职责：
-1. 彻底告别千篇一律的死板配图，引入 5 大场景化视觉风格引擎；
-2. 装备特写 (Macro) / 指挥全息 (C4ISR) / 卫星态势 (Satellite) / 战地纪实 (Reuters) / 特刊图解 (Infographic)；
-3. 智能构建高质量 Prompt，调用 SiliconFlow 高质量生图接口；
-4. 优雅降级与本地战术图合成能力。
+微信公众号专业视觉与场景出图引擎 (Visual & Geopolitical Map Service)
+特性：
+1. 修复 API 密钥统一取用 settings.LLM_API_KEY，模型采用已验证稳定的 Tongyi-MAI/Z-Image-Turbo 与 Kwai-Kolors；
+2. 智能识别新闻涉及的核心地缘战区（红海/波斯湾/南海/台海/东欧黑海/半岛），生成真实地缘态势地图照片；
+3. 多级保底：AI 实时地理测绘出图 -> 本地高清战区地图库 -> 战术制图雷达图，保证 100% 稳定出图。
 """
 
 import os
-import datetime
 import re
+import time
 import requests
+import datetime
 from pathlib import Path
-from typing import Optional, List, Dict
-from config.settings import logger
+from typing import Optional, Dict, Any, Tuple
+from config.settings import settings, logger
 
+BASE_DIR = Path(__file__).resolve().parent.parent
 SILICONFLOW_API_URL = "https://api.siliconflow.cn/v1/images/generations"
 
 
 class ImageService:
-    """多维视觉与 AI 生图服务"""
+    """防务与地缘长文视觉大片与地缘战区地图生成引擎"""
 
     # 5 大专业防务与地缘视觉风格模板
     VISUAL_STYLES: Dict[str, Dict[str, str]] = {
@@ -46,11 +47,68 @@ class ImageService:
         }
     }
 
+    # 地缘战区模式与图注规则表
+    GEOPOLITICAL_REGIONS = [
+        {
+            "keys": ["红海", "曼德海峡", "也门", "胡塞", "亚丁湾", "苏伊士"],
+            "region": "红海与曼德海峡关键咽喉水道",
+            "prompt_region": "Red Sea and Bab-el-Mandeb Strait, Yemen coastline and naval shipping corridors",
+            "caption": "▲ 地缘态势地图：红海曼德海峡与也门沿岸关键航道封控与突防预警示意",
+            "fallback_file": "assets/maps/red_sea_map.jpg"
+        },
+        {
+            "keys": ["波斯湾", "霍尔木兹", "伊朗", "沙特", "以色列", "以军", "加沙", "哈马斯", "真主党", "中东"],
+            "region": "中东波斯湾与霍尔木兹海峡战略走廊",
+            "prompt_region": "Middle East Persian Gulf, Strait of Hormuz, Iran and regional strategic airspaces",
+            "caption": "▲ 地缘态势地图：中东核心战区与波斯湾战略走廊要塞部署态势",
+            "fallback_file": "assets/maps/middle_east_map.jpg"
+        },
+        {
+            "keys": ["南海", "仁爱礁", "黄岩岛", "菲律宾", "台海", "台湾海峡", "第一岛链", "巴士海峡"],
+            "region": "南海海域与台湾海峡战略通道",
+            "prompt_region": "South China Sea and Taiwan Strait, First Island Chain shipping lanes and naval chokepoints",
+            "caption": "▲ 地缘态势地图：南海关键航道与第一岛链海空前哨防御纵深示意",
+            "fallback_file": "assets/maps/south_china_sea_map.jpg"
+        },
+        {
+            "keys": ["乌克兰", "俄军", "顿巴斯", "黑海", "克里米亚", "北约", "波罗的海", "库尔斯克"],
+            "region": "东欧战区与黑海战略出海口",
+            "prompt_region": "Eastern Europe, Black Sea basin, Crimea and strategic defense buffer zones",
+            "caption": "▲ 地缘态势地图：东欧黑海沿岸关键海空通道与战略交锋接触线示意",
+            "fallback_file": "assets/maps/eastern_europe_map.jpg"
+        },
+        {
+            "keys": ["朝鲜", "半岛", "三八线", "日本海", "朝韩"],
+            "region": "东北亚与朝鲜半岛前沿态势",
+            "prompt_region": "Korean Peninsula, 38th parallel DMZ and Sea of Japan maritime zone",
+            "caption": "▲ 地缘态势地图：东北亚与半岛军事分界线海空战术态势示意",
+            "fallback_file": "assets/maps/red_sea_map.jpg"
+        }
+    ]
+
+    @classmethod
+    def _get_api_key(cls) -> str:
+        """获取有效的 SiliconFlow API Key"""
+        return os.getenv("SILICONFLOW_API_KEY") or settings.LLM_API_KEY or ""
+
+    @classmethod
+    def detect_region_and_caption(cls, title: str, content: str = "") -> Dict[str, str]:
+        """智能探测文章涉及的核心地缘地理战区与配套专业图注"""
+        text = (title + " " + content).lower()
+        for reg in cls.GEOPOLITICAL_REGIONS:
+            if any(k.lower() in text for k in reg["keys"]):
+                return reg
+        return {
+            "region": "全球地缘博弈核心咽喉水道",
+            "prompt_region": "Global strategic geopolitical chokepoint and maritime shipping corridor",
+            "caption": "▲ 地缘态势地图：全球战略走廊与核心海空咽喉部署态势示意",
+            "fallback_file": "assets/maps/red_sea_map.jpg"
+        }
+
     @classmethod
     def enhance_prompt(cls, raw_prompt: str, style_key: str = "photojournalism") -> str:
         """根据风格模式合成专业分镜头提示词"""
         style = cls.VISUAL_STYLES.get(style_key, cls.VISUAL_STYLES["photojournalism"])
-        # 去除用户 prompt 中的重复噪点
         clean_prompt = re.sub(r'[,，\s]*(8k|高清|超清|大片|真实).*', '', raw_prompt).strip()
         return f"{clean_prompt}，{style['suffix']}"
 
@@ -61,16 +119,14 @@ class ImageService:
         style_key: str = "photojournalism",
         output_path: str = "assets/flux_illustration.jpg"
     ) -> Optional[str]:
-        """
-        调用 SiliconFlow 图像大模型生成场景配图
-        """
-        api_key = os.getenv("SILICONFLOW_API_KEY")
-        if not api_key:
-            logger.warning("未检测到 SILICONFLOW_API_KEY，将启用保底态势图生成机制")
-            return cls.generate_tactical_infographic(prompt[:25], output_path=output_path)
-
+        """调用 SiliconFlow 图像大模型生成场景纪实大片"""
+        api_key = cls._get_api_key()
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
+
+        if not api_key:
+            logger.warning("未检测到有效生图 API Key，启用战术态势底图机制")
+            return cls.generate_tactical_infographic(prompt[:25], output_path=output_path)
 
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -78,37 +134,101 @@ class ImageService:
         }
 
         enhanced_prompt = cls.enhance_prompt(prompt, style_key)
-        logger.info(f"🎨 正在调用 AI 视觉引擎 [{style_key}] 生成配图: {enhanced_prompt[:40]}...")
+        logger.info(f"🎨 调用 AI 视觉引擎生成配图: {enhanced_prompt[:40]}...")
 
-        payload = {
-            "model": "Kwai-Kolors/Kolors",
-            "prompt": enhanced_prompt,
-            "image_size": "1024x1024",
-            "batch_size": 1
-        }
+        # 优先使用实测稳定的极速模型 Tongyi-MAI/Z-Image-Turbo，备选 Kwai-Kolors/Kolors
+        candidate_models = ["Tongyi-MAI/Z-Image-Turbo", "Kwai-Kolors/Kolors"]
 
-        try:
-            resp = requests.post(SILICONFLOW_API_URL, headers=headers, json=payload, timeout=45)
-            data = resp.json()
-            if "images" in data and len(data["images"]) > 0:
-                img_url = data["images"][0]["url"]
-                img_resp = requests.get(img_url, timeout=25)
-                with open(out, "wb") as f:
-                    f.write(img_resp.content)
-                logger.info(f"🎉 场景配图生成成功: {out}")
-                return str(out)
-            else:
-                logger.warning(f"生图返回异常: {data}")
-        except Exception as e:
-            logger.warning(f"调用 AI 出图失败: {e}")
+        for model in candidate_models:
+            payload = {
+                "model": model,
+                "prompt": enhanced_prompt,
+                "image_size": "1024x576"
+            }
+            try:
+                resp = requests.post(SILICONFLOW_API_URL, headers=headers, json=payload, timeout=25)
+                data = resp.json()
+                if "images" in data and len(data["images"]) > 0:
+                    img_url = data["images"][0]["url"]
+                    img_resp = requests.get(img_url, timeout=20)
+                    with open(out, "wb") as f:
+                        f.write(img_resp.content)
+                    logger.info(f"🎉 场景配图生成成功 [{model}]: {out}")
+                    return str(out)
+                else:
+                    logger.warning(f"模型 {model} 返回异常: {data.get('message') or data}")
+            except Exception as e:
+                logger.warning(f"模型 {model} 请求失败: {e}")
 
-        # 出错时降级为战术图
+        # 出错时降级为本地战术图
         return cls.generate_tactical_infographic(prompt[:25], output_path=output_path)
+
+    @classmethod
+    def generate_geopolitical_map(
+        cls,
+        title: str,
+        content: str = "",
+        output_path: str = "assets/tactical_situation.jpg"
+    ) -> Tuple[str, str]:
+        """
+        根据新闻涉及的地理战区，智能生成或匹配真实地缘战区态势地图照片
+        返回: (图片本地路径, 专业图注)
+        """
+        reg_info = cls.detect_region_and_caption(title, content)
+        caption = reg_info["caption"]
+        out = Path(output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+
+        api_key = cls._get_api_key()
+        if api_key:
+            map_prompt = (
+                f"专业地缘战略态势地图与战术地理测绘大片，标注 {reg_info['region']}，"
+                f"清晰呈现关键海上航道、防空识别区与战略纵深要地，正射卫星俯瞰视角，"
+                f"真实地理测绘标尺与经纬度线，8k超高清制图学大片，权威地缘期刊风格"
+            )
+            logger.info(f"🗺️ 正在为新闻生成专属地缘态势地图: {reg_info['region']}...")
+            try:
+                headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+                payload = {
+                    "model": "Tongyi-MAI/Z-Image-Turbo",
+                    "prompt": map_prompt,
+                    "image_size": "1024x576"
+                }
+                resp = requests.post(SILICONFLOW_API_URL, headers=headers, json=payload, timeout=20)
+                data = resp.json()
+                if "images" in data and len(data["images"]) > 0:
+                    img_url = data["images"][0]["url"]
+                    img_resp = requests.get(img_url, timeout=15)
+                    with open(out, "wb") as f:
+                        f.write(img_resp.content)
+                    logger.info(f"🎉 地缘态势地图生成成功: {out}")
+                    return str(out), caption
+            except Exception as e:
+                logger.warning(f"AI 地图在线生成失败，启用本地高清地缘底图: {e}")
+
+        # 降级 1: 若本地已存在该区域的高清战区地图，直接复制使用
+        fallback_path = BASE_DIR / reg_info["fallback_file"]
+        if fallback_path.exists():
+            try:
+                import shutil
+                shutil.copyfile(str(fallback_path), str(out))
+                logger.info(f"🗺️ 成功加载本地战区地图底图: {fallback_path}")
+                return str(out), caption
+            except Exception as e:
+                logger.warning(f"复制底图异常: {e}")
+
+        # 降级 2: 动态绘制专业战术雷达地图
+        cls.generate_tactical_infographic(
+            title=reg_info["region"],
+            label="GEOPOLITICAL SITUATION REPORT",
+            output_path=str(out)
+        )
+        return str(out), caption
 
     @staticmethod
     def generate_tactical_infographic(
         title: str,
-        label: str = None,
+        label: str = "STRATEGIC SITUATION REPORT",
         output_path: str = "assets/tactical_infographic.jpg"
     ) -> str:
         """保底生成专业科技战术态势图"""
@@ -132,12 +252,12 @@ class ImageService:
 
             pad = 24
             draw.rectangle([(pad, pad), (width - pad, height - pad)], outline="#334155", width=2)
-            # 战术四角
             for (x, y) in [(pad, pad), (width - pad, pad), (pad, height - pad), (width - pad, height - pad)]:
                 draw.rectangle([(x - 2, y - 2), (x + 2, y + 2)], fill="#ea580c")
 
-            draw.text((pad + 18, pad + 16), f"[ SITUATION REPORT ] // {label}", fill="#38bdf8")
-            draw.text((width - pad - 190, pad + 16), f"SYSTEM: {datetime.datetime.now().year} ACTIVE", fill="#22c55e")
+            safe_label = label or "DEFENSE SITUATION"
+            draw.text((pad + 18, pad + 16), f"[ {safe_label} ]", fill="#38bdf8")
+            draw.text((width - pad - 190, pad + 16), f"STATUS: {datetime.datetime.now().year} ACTIVE", fill="#22c55e")
 
             font_candidates = [
                 "/System/Library/Fonts/PingFang.ttc",
@@ -148,18 +268,18 @@ class ImageService:
             for fc in font_candidates:
                 if Path(fc).exists():
                     try:
-                        font = ImageFont.truetype(fc, 28)
+                        font = ImageFont.truetype(fc, 26)
                         break
                     except Exception:
                         pass
 
-            display_title = title if len(title) <= 22 else title[:22] + "..."
+            display_title = title if len(title) <= 24 else title[:24] + "..."
             if font:
-                draw.text((cx - 230, cy - 18), display_title, font=font, fill="#f8fafc")
+                draw.text((cx - 210, cy - 16), display_title, font=font, fill="#f8fafc")
             else:
-                draw.text((cx - 160, cy - 18), "DEFENSE INSIGHT", fill="#f8fafc")
+                draw.text((cx - 150, cy - 16), "GEOPOLITICAL THEATER", fill="#f8fafc")
 
-            draw.text((pad + 18, height - pad - 30), "COORDINATES: GLOBAL THEATER // INTELLIGENCE MATRIX", fill="#64748b")
+            draw.text((pad + 18, height - pad - 28), "COORDINATES: STRATEGIC MARITIME PASSAGE // THEATER SATELLITE", fill="#64748b")
             img.save(str(out), "JPEG", quality=95)
             return str(out)
 

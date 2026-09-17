@@ -103,7 +103,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             try:
                 if clustered == "1":
                     # 全量获取最新聚类池，确保宏观视野完整与分类统计准确
-                    all_clusters = DefenseCrawler.fetch_clustered_topics(category="all", limit=30, force_refresh=force_refresh)
+                    all_clusters = DefenseCrawler.fetch_clustered_topics(category="all", limit=60, force_refresh=force_refresh)
                     all_items = []
                     for c in all_clusters:
                         all_items.extend(c.get("items", []))
@@ -383,7 +383,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                 rel_url = "/" + str(Path(cov).relative_to(BASE_DIR) if BASE_DIR in Path(cov).parents else cov)
                 article_images.append({"url": rel_url, "caption": "▲ 战区现场实录与核心交锋装备态势"})
             if (BASE_DIR / "assets" / "tactical_situation.jpg").exists():
-                article_images.append({"url": "/assets/tactical_situation.jpg", "caption": "▲ 战术态势推演：关键海域防空雷达探测盲区与突防弹道示意"})
+                article_images.append({"url": "/assets/tactical_situation.jpg", "caption": CURRENT_CACHE.get("map_caption") or "▲ 地缘态势地图：关键海空航道与战区战略纵深示意"})
 
             sources_list = CURRENT_CACHE.get("sources_list") or [
                 f"防务官方通报与公开战报研判池 ({datetime.datetime.now().strftime('%Y-%m-%d')})",
@@ -571,16 +571,18 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                 cover_path = str(BASE_DIR / "assets" / "article_cover.jpg")
                 img1_path = cover_path
 
-            # 图二: 战术态势推演示意图 (带有战术雷达波与坐标标注)
+            # 图二: 智能匹配与生成新闻涉及的核心地缘战区态势地图照片
             try:
-                img2_path = ImageService.generate_tactical_infographic(
+                send_sse("status", {"message": "正在探测新闻地缘区域，生成匹配的核心海空战区态势地图照片..."})
+                img2_path, map_caption = ImageService.generate_geopolitical_map(
                     title=title,
-                    label=f"{datetime.datetime.now().year} 多波次攻防推演与雷达盲区示意",
+                    content=digest + " " + md_content[:300],
                     output_path="assets/tactical_situation.jpg"
                 )
             except Exception as e_tac:
-                logger.warning(f"战术态势图合成异常: {e_tac}")
+                logger.warning(f"地缘态势地图生成异常: {e_tac}")
                 img2_path = ""
+                map_caption = "▲ 地缘态势地图：关键海空航道与战区战略纵深示意"
 
             # 构造内嵌图片列表 (本地相对路径或 CDN)
             article_images = []
@@ -592,7 +594,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             if img2_path:
                 article_images.append({
                     "url": "/" + str(Path(img2_path).relative_to(BASE_DIR) if BASE_DIR in Path(img2_path).parents else img2_path),
-                    "caption": "▲ 战术态势推演：关键海域防空雷达探测盲区与突防弹道示意"
+                    "caption": map_caption
                 })
 
             # 2. 构造信源清单 (事实核查附录)
@@ -651,6 +653,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             CURRENT_CACHE["html_content"] = html_content
             CURRENT_CACHE["markdown_content"] = md_content
             CURRENT_CACHE["theme"] = theme_choice
+            CURRENT_CACHE["map_caption"] = map_caption
             CURRENT_CACHE["cover_image"] = cover_path
             CURRENT_CACHE["word_count"] = word_count
             CURRENT_CACHE["read_time"] = read_time
@@ -739,6 +742,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             CURRENT_CACHE["html_content"] = html_content
             CURRENT_CACHE["markdown_content"] = md_content
             CURRENT_CACHE["theme"] = theme_choice
+            CURRENT_CACHE["map_caption"] = map_caption
             CURRENT_CACHE["cover_image"] = cover_path
             CURRENT_CACHE["word_count"] = word_count
             CURRENT_CACHE["read_time"] = read_time
