@@ -72,7 +72,16 @@ def init_db():
                 );
             """)
 
-            # 3. 索引优化
+            # 3. 系统动态运行时配置表 (支持前端无感热切大模型凭据与自定义端点)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS system_configs (
+                    key TEXT PRIMARY KEY,
+                    value TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
+            # 4. 索引优化
             conn.execute("CREATE INDEX IF NOT EXISTS idx_articles_created ON articles(created_at DESC);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_news_category ON news_pool(category);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_news_hash ON news_pool(url_hash);")
@@ -239,3 +248,59 @@ class DatabaseManager:
             logger.error(f"标记资讯状态失败: {e}")
         finally:
             conn.close()
+
+    @staticmethod
+    def get_config(key: str, default: str = "") -> str:
+        """读取系统动态配置项"""
+        conn = get_db_connection()
+        try:
+            cursor = conn.execute("SELECT value FROM system_configs WHERE key = ?", (key,))
+            row = cursor.fetchone()
+            return row["value"] if row else default
+        except Exception as e:
+            logger.error(f"读取配置 {key} 失败: {e}")
+            return default
+        finally:
+            conn.close()
+
+    @staticmethod
+    def set_config(key: str, value: str):
+        """写入或更新系统动态配置项"""
+        conn = get_db_connection()
+        try:
+            with conn:
+                conn.execute("""
+                    INSERT INTO system_configs (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+                """, (key, value))
+        except Exception as e:
+            logger.error(f"写入配置 {key} 失败: {e}")
+        finally:
+            conn.close()
+
+    @classmethod
+    def get_llm_config(cls) -> Dict[str, str]:
+        """
+        获取当前生效的大模型动态配置
+        优先级: SQLite 动态配置 > .env 环境变量
+        """
+        from config.settings import settings
+        api_key = cls.get_config("llm_api_key", "").strip() or settings.LLM_API_KEY
+        base_url = cls.get_config("llm_base_url", "").strip() or settings.LLM_BASE_URL
+        model = cls.get_config("llm_model", "").strip() or settings.LLM_MODEL
+        provider = cls.get_config("llm_provider", "siliconflow").strip()
+        return {
+            "provider": provider,
+            "api_key": api_key,
+            "base_url": base_url.rstrip("/"),
+            "model": model
+        }
+
+    @classmethod
+    def save_llm_config(cls, provider: str, base_url: str, api_key: str, model: str):
+        """保存大模型配置并即刻热生效"""
+        if provider: cls.set_config("llm_provider", provider.strip())
+        if base_url: cls.set_config("llm_base_url", base_url.strip().rstrip("/"))
+        if api_key: cls.set_config("llm_api_key", api_key.strip())
+        if model: cls.set_config("llm_model", model.strip())
+        logger.info(f"✅ 大模型配置已更新并热生效: Provider={provider}, Model={model}, BaseURL={base_url}")

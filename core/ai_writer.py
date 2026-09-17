@@ -1,3 +1,4 @@
+from core.db import DatabaseManager
 from core.prompt_manager import PromptManager
 import os
 import json
@@ -110,13 +111,19 @@ class AIWriter:
             user_focus=user_focus or "全面结合历史材料，讲透双方为什么干起来的前因后果，并深扒双方动用武器的幕后国家技术血统与军工利益链。"
         )
 
+        # 实时获取前端后台动态配置的大模型凭证与端点 (热生效，无需重启)
+        llm_cfg = DatabaseManager.get_llm_config()
+        active_api_key = llm_cfg["api_key"]
+        active_base_url = llm_cfg["base_url"]
+        active_model = llm_cfg["model"]
+
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {active_api_key}",
             "Content-Type": "application/json"
         }
 
         payload = {
-            "model": self.model,
+            "model": active_model,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -126,8 +133,8 @@ class AIWriter:
             "stream": True
         }
 
-        url = f"{self.base_url.rstrip('/')}/chat/completions"
-        yield {"type": "status", "data": f"正在连接 AI 推理集群 ({self.model})，启动深度战局推演..."}
+        url = f"{active_base_url.rstrip('/')}/chat/completions"
+        yield {"type": "status", "data": f"正在连接 AI 推理集群 ({active_model})，启动深度战局推演..."}
 
         full_thinking = []
         full_content = []

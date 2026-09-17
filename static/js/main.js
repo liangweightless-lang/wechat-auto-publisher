@@ -10,6 +10,7 @@ import { switchPlatform, copyActiveContent } from './modules/matrix/matrixView.j
 import { openHistoryDrawer, closeHistoryDrawer, loadHistoryArticles, loadHistoryArticleDetail, showSourceNewsModal } from './modules/history/historyView.js';
 import { openStrategyDrawer, closeStrategyDrawer, loadStrategyData, sendStrategyTuneMessage, triggerAiRadarRefresh, resetStrategyToDefault, syncTodayRadarToHome } from './modules/strategy/strategyChat.js';
 import { openPromptDrawer, closePromptDrawer, loadPromptConfig, savePrompts, resetPrompts } from './modules/prompt/promptConfig.js';
+import { openModelSettingsDrawer, closeModelSettingsDrawer, applyModelPreset, toggleKeyVisibility, testModelConnection, saveModelConfig, loadCurrentModelConfig } from './modules/settings/modelSettings.js';
 import { publishApi } from './api/publishApi.js';
 
 // 统一抽屉路由分配 (Decoupled Drawer Router)
@@ -20,6 +21,8 @@ export function openBottomSheet(sheetId) {
         openHistoryDrawer();
     } else if (sheetId === 'promptSheet') {
         openPromptDrawer();
+    } else if (sheetId === 'modelSettingsSheet') {
+        openModelSettingsDrawer();
     }
 }
 
@@ -30,6 +33,8 @@ export function closeBottomSheet(sheetId) {
         closeHistoryDrawer();
     } else if (sheetId === 'promptSheet') {
         closePromptDrawer();
+    } else if (sheetId === 'modelSettingsSheet') {
+        closeModelSettingsDrawer();
     }
 }
 
@@ -207,6 +212,13 @@ window.app = {
     closeHistoryDrawer,
     openPromptDrawer,
     closePromptDrawer,
+    openModelSettingsDrawer,
+    closeModelSettingsDrawer,
+    applyModelPreset,
+    toggleKeyVisibility,
+    testModelConnection,
+    saveModelConfig,
+    loadCurrentModelConfig,
     switchMainTab,
     selectCategory,
     filterByDynamicCategory,

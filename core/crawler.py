@@ -1,3 +1,4 @@
+from core.db import DatabaseManager
 # -*- coding: utf-8 -*-
 """
 产品级多源防务与地缘热点聚合引擎
@@ -170,10 +171,15 @@ class DefenseCrawler:
         if not to_translate:
             return results
 
-        api_key = settings.LLM_API_KEY
-        base_url = settings.LLM_BASE_URL.rstrip("/")
+        llm_cfg = DatabaseManager.get_llm_config()
+        api_key = llm_cfg["api_key"]
+        base_url = llm_cfg["base_url"]
+        active_model = llm_cfg["model"]
         if not api_key:
             return results
+
+        # 智能匹配翻译模型: 若当前是智谱清言则用其永久免费的 glm-4-flash，否则默认极速 Qwen2.5-7B
+        trans_model = "glm-4-flash" if "bigmodel" in base_url.lower() or "glm" in active_model.lower() else "Qwen/Qwen2.5-7B-Instruct"
 
         chunk_size = 5
         chunks = [to_translate[i:i + chunk_size] for i in range(0, len(to_translate), chunk_size)]
@@ -191,7 +197,7 @@ class DefenseCrawler:
                     f"{base_url}/chat/completions",
                     headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                     json={
-                        "model": "Qwen/Qwen2.5-7B-Instruct",
+                        "model": trans_model,
                         "messages": [{"role": "user", "content": prompt}],
                         "temperature": 0.1,
                         "max_tokens": min(len(chunk) * 60, 400)

@@ -12,6 +12,8 @@ Web 控制台请求处理核心模块
 
 import os
 import datetime
+import time
+import requests
 import json
 import cgi
 import mimetypes
@@ -153,6 +155,21 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 logger.error(f"拉取情报异常: {e}")
                 self._send_json({"code": 500, "message": str(e)})
+            return
+
+        # 4.5 [API] 获取当前大模型动态配置: GET /api/settings/llm
+        if path == "/api/settings/llm":
+            cfg = DatabaseManager.get_llm_config()
+            raw_key = cfg.get("api_key", "")
+            masked_key = (raw_key[:6] + "******" + raw_key[-4:]) if len(raw_key) > 10 else ("******" if raw_key else "")
+            self._send_json({
+                "code": 200,
+                "provider": cfg.get("provider", "siliconflow"),
+                "base_url": cfg.get("base_url", ""),
+                "model": cfg.get("model", ""),
+                "masked_api_key": masked_key,
+                "has_api_key": bool(raw_key)
+            })
             return
 
         # 5. [API] 获取智库提示词配置: GET /api/prompts
@@ -312,6 +329,75 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
         if path == "/api/prompts/reset":
             res = PromptManager.reset_prompts()
             self._send_json({"code": 200, "message": "已恢复智库默认提示词", **res})
+            return
+
+        # 5.5 [API] 保存大模型动态配置: POST /api/settings/llm
+        if path == "/api/settings/llm":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len).decode("utf-8")
+                data = json.loads(body)
+                provider = data.get("provider", "").strip()
+                base_url = data.get("base_url", "").strip()
+                api_key = data.get("api_key", "").strip()
+                model = data.get("model", "").strip()
+
+                if not api_key:
+                    existing = DatabaseManager.get_llm_config()
+                    api_key = existing.get("api_key", "")
+
+                DatabaseManager.save_llm_config(provider=provider, base_url=base_url, api_key=api_key, model=model)
+                self._send_json({"code": 200, "message": "大模型配置已成功保存并即时生效！"})
+            except Exception as e:
+                self._send_json({"code": 500, "message": f"保存配置失败: {e}"})
+            return
+
+        # 5.6 [API] 测试大模型连通性: POST /api/settings/llm/test
+        if path == "/api/settings/llm/test":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len).decode("utf-8")
+                data = json.loads(body)
+                base_url = data.get("base_url", "").strip().rstrip("/")
+                api_key = data.get("api_key", "").strip()
+                model = data.get("model", "").strip()
+
+                if not api_key:
+                    existing = DatabaseManager.get_llm_config()
+                    api_key = existing.get("api_key", "")
+
+                if not base_url or not api_key or not model:
+                    self._send_json({"code": 400, "message": "测试失败: Base URL、API Key 与 Model 均不能为空"})
+                    return
+
+                t0 = time.time()
+                resp = requests.post(
+                    f"{base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": model,
+                        "messages": [{"role": "user", "content": "你好，请回复'连接成功'"}],
+                        "max_tokens": 30
+                    },
+                    timeout=12
+                )
+                cost = round(time.time() - t0, 2)
+                if resp.status_code == 200:
+                    reply = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                    self._send_json({
+                        "code": 200,
+                        "latency": f"{cost}s",
+                        "reply": reply,
+                        "message": f"连通成功！耗时 {cost}s，模型返回正常。"
+                    })
+                elif resp.status_code == 402:
+                    self._send_json({"code": 402, "message": f"连接失败 (HTTP 402): 平台提示该账户余额不足/欠费"})
+                elif resp.status_code == 401:
+                    self._send_json({"code": 401, "message": f"连接失败 (HTTP 401): API Key 无效或未授权"})
+                else:
+                    self._send_json({"code": resp.status_code, "message": f"服务响应异常 (HTTP {resp.status_code}): {resp.text[:120]}"})
+            except Exception as e:
+                self._send_json({"code": 500, "message": f"网络连通失败: {e}"})
             return
 
         # 6. [API] 保存修改后的提示词: POST /api/prompts
