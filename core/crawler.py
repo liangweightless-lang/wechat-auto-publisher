@@ -774,23 +774,51 @@ class DefenseCrawler:
 
     @classmethod
     def _calc_badge_and_score(cls, items: List[Dict[str, Any]], main_title: str) -> tuple:
-        """计算卡片左上角彩色徽章与85-99真实热度分"""
-        has_xinhua_people = any(any(k in it.get("source", "") for k in ["新华", "人民网"]) for it in items)
-        has_tech = any(any(k in (it.get("title", "") + main_title) for k in ["制造", "科技", "芯片", "算力", "卫星", "华为", "AI", "技术", "工业"]) for it in items)
-        has_military = any(any(k in it.get("source", "") or k in (it.get("title", "") + main_title) for k in ["军", "战", "防空", "导弹", "轰炸机", "演训", "撤军", "冲突", "以军", "俄军", "突防"]) for it in items)
+        """多维精准识别新闻领域分类(国内/民生/科技/军事/国际)及真实热度"""
+        all_text = (main_title + " " + " ".join(it.get("title", "") for it in items) + " " + " ".join(it.get("source", "") for it in items)).lower()
+        is_overseas = any(it.get("is_overseas", False) for it in items)
 
-        if has_xinhua_people and not has_military:
-            badge = "国内"
-            badge_class = "badge-domestic"
-        elif has_tech:
-            badge = "科技"
-            badge_class = "badge-tech"
-        elif has_military:
-            badge = "军事"
-            badge_class = "badge-military"
-        else:
-            badge = "国际"
-            badge_class = "badge-intl"
+        MILITARY_WORDS = [
+            "军", "战", "防空", "导弹", "轰炸", "演训", "撤军", "冲突", "以军", "俄军", "美军", "乌军",
+            "战机", "航母", "武器", "突防", "国防", "潜艇", "舰艇", "哨所", "兵力", "雷达", "加沙", "顿巴斯", "胡塞", "军事"
+        ]
+        TECH_WORDS = [
+            "科技", "芯片", "半导体", "算力", "卫星", "航天", "神舟", "空间站", "ai", "人工智能", "大模型",
+            "智能", "机器人", "量子", "新质生产力", "新能源", "先进制造", "工业母机", "低空经济", "数字化", "研发", "盾构机", "天仪", "光伏", "技术", "基础研究"
+        ]
+        LIVELIHOOD_WORDS = [
+            "民生", "医保", "社保", "就业", "养老", "教育", "高校", "消费", "物价", "住房", "房贷", "交通",
+            "高铁", "公路", "春运", "文旅", "旅游", "古城", "天气", "降雨", "暴雪", "降温", "防汛", "农业", "秋粮", "丰收", "生猪", "食品安全", "技能大赛", "亚运", "服装"
+        ]
+        INTL_WORDS = [
+            "联合国", "安理会", "欧美", "白宫", "五角大楼", "普京", "拜登", "特朗普", "哈里斯", "朔尔茨", "马克龙",
+            "欧盟", "东盟", "博览会", "峰会", "外长", "大使", "双边", "跨境", "关税", "外媒", "路透", "法新", "韩联社", "海外", "中东", "欧洲", "拉美", "非洲", "日韩", "大国外交"
+        ]
+        DOMESTIC_WORDS = [
+            "中共中央", "国务院", "总书记", "政治局", "常委会", "两会", "人大", "政协", "部委", "发改委",
+            "财政部", "省委", "纪检", "巡视", "高质量发展", "乡村振兴", "中国式现代化", "边疆", "边防", "国内", "新华社", "人民网"
+        ]
+
+        scores = {
+            "military": sum(2 for w in MILITARY_WORDS if w in all_text),
+            "tech": sum(2 for w in TECH_WORDS if w in all_text),
+            "livelihood": sum(2 for w in LIVELIHOOD_WORDS if w in all_text),
+            "intl": sum(2 for w in INTL_WORDS if w in all_text) + (3 if is_overseas else 0),
+            "domestic": sum(1 for w in DOMESTIC_WORDS if w in all_text)
+        }
+
+        best_cat = max(scores, key=scores.get)
+        if scores[best_cat] == 0:
+            best_cat = "intl" if is_overseas else "domestic"
+
+        BADGE_INFO = {
+            "military": ("军事", "badge-military"),
+            "tech": ("科技", "badge-tech"),
+            "livelihood": ("民生", "badge-livelihood"),
+            "intl": ("国际", "badge-intl"),
+            "domestic": ("国内", "badge-domestic")
+        }
+        badge, badge_class = BADGE_INFO[best_cat]
 
         has_official = any(it.get("is_official", False) for it in items)
         count = len(items)
@@ -802,7 +830,8 @@ class DefenseCrawler:
         elif count >= 2:
             score += 2
         score = min(99, max(85, score))
-        return badge, badge_class, score
+
+        return best_cat, badge, badge_class, score
 
     @classmethod
     def cluster_topics(cls, topics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -848,13 +877,13 @@ class DefenseCrawler:
                 if not c_tags:
                     c_tags = cls.extract_tags(grp["name"], matched_items[0]["title"])
 
-                badge, badge_class, score = cls._calc_badge_and_score(matched_items, matched_items[0]["title"])
+                c_cat, badge, badge_class, score = cls._calc_badge_and_score(matched_items, matched_items[0]["title"])
                 clusters.append({
                     "cluster_id": f"cluster_{len(clusters)+1}",
                     "cluster_name": grp["name"],
                     "main_title": matched_items[0]["title"],
                     "topic_count": len(matched_items),
-                    "category": matched_items[0].get("category", "综合热点"),
+                    "category": c_cat,
                     "badge": badge,
                     "badge_class": badge_class,
                     "hot_score": score,
@@ -868,14 +897,14 @@ class DefenseCrawler:
         for idx, t in enumerate(topics):
             if idx in visited:
                 continue
-            s_badge, s_badge_class, s_score = cls._calc_badge_and_score([t], t.get("title", ""))
+            s_cat, s_badge, s_badge_class, s_score = cls._calc_badge_and_score([t], t.get("title", ""))
             s_tags = t.get("keywords") or cls.extract_tags(t.get("title", ""))
             clusters.append({
                 "cluster_id": f"cluster_{len(clusters)+1}",
                 "cluster_name": t.get("title", "独立防务事件")[:16],
                 "main_title": t.get("title", ""),
                 "topic_count": 1,
-                "category": t.get("category", "综合热点"),
+                "category": s_cat,
                 "badge": s_badge,
                 "badge_class": s_badge_class,
                 "hot_score": s_score,

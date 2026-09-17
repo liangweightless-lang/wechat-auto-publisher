@@ -109,36 +109,25 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                     if all_items:
                         DatabaseManager.record_news_items(all_items)
 
-                    # 动态生成今日真实主题胶囊 (重磅多源大事件聚合优先，单篇归入综合快讯)
-                    total_count = sum(c.get("topic_count", len(c.get("items", []))) for c in clusters)
-                    dynamic_categories = [
-                        {"id": "all", "name": "全部焦点", "count": total_count}
+                    # 按照用户截图标准体系，生成丰富的宏观领域分类胶囊 (全部、国内、科技、军事、国际、民生)
+                    cat_order = [
+                        {"id": "all", "name": "全部"},
+                        {"id": "domestic", "name": "国内"},
+                        {"id": "tech", "name": "科技"},
+                        {"id": "military", "name": "军事"},
+                        {"id": "intl", "name": "国际"},
+                        {"id": "livelihood", "name": "民生"},
                     ]
-                    multi_clusters = [c for c in clusters if c.get("topic_count", len(c.get("items", []))) >= 2]
-                    single_clusters = [c for c in clusters if c.get("topic_count", len(c.get("items", []))) < 2]
-
-                    for c in multi_clusters:
-                        c_name = c.get("cluster_name", "")
-                        if "与" in c_name:
-                            short_name = c_name.split("与")[0].replace("地区", "").replace("战局", "").strip()
-                        elif any(kw in c_name for kw in ["冲突", "战报", "博弈", "演训", "态势", "反导", "武器"]):
-                            short_name = c_name[:5].strip()
+                    dynamic_categories = []
+                    for cat_def in cat_order:
+                        cid = cat_def["id"]
+                        if cid == "all":
+                            cnt = len(clusters)
+                            dynamic_categories.append({"id": cid, "name": cat_def["name"], "count": cnt})
                         else:
-                            short_name = c_name[:6].strip()
-
-                        dynamic_categories.append({
-                            "id": c.get("cluster_id"),
-                            "name": short_name,
-                            "count": c.get("topic_count", len(c.get("items", [])))
-                        })
-
-                    if single_clusters:
-                        single_count = sum(c.get("topic_count", len(c.get("items", []))) for c in single_clusters)
-                        dynamic_categories.append({
-                            "id": "singles",
-                            "name": "综合快报",
-                            "count": single_count
-                        })
+                            cnt = sum(1 for c in clusters if c.get("category") == cid or c.get("badge") == cat_def["name"])
+                            if cnt > 0:
+                                dynamic_categories.append({"id": cid, "name": cat_def["name"], "count": cnt})
                     self._send_json({"code": 200, "clusters": clusters, "dynamic_categories": dynamic_categories, "raw_topics": all_items})
                 else:
                     topics = DefenseCrawler.fetch_multi_source_topics(category=cat, limit=25)

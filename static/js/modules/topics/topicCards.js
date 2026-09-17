@@ -169,10 +169,7 @@ export function renderClusters(clusters) {
                     </div>
                 </div>
 
-                <!-- 3. 横贯全宽的能量热度进度条 (橙红渐变，对标截图) -->
-                <div class="card-hot-track">
-                    <div class="card-hot-fill" style="width: ${hotScore}%;"></div>
-                </div>
+
 
                 <!-- 4. 底部多标签药丸栏 (#先进制造 #政策定调 #新质生产力，对标截图) -->
                 <div class="cluster-keywords-row">
@@ -311,11 +308,21 @@ export function filterByDynamicCategory(catId, btnEl) {
     const allClusters = state.currentClustersData || [];
     if (catId === 'all') {
         renderClusters(allClusters);
-    } else if (catId === 'singles') {
-        const singles = allClusters.filter(c => (c.topic_count || (c.items ? c.items.length : 1)) < 2);
-        renderClusters(singles);
     } else {
-        const filtered = allClusters.filter(c => c.cluster_id === catId);
-        renderClusters(filtered);
+        const catNameMap = {
+            'domestic': '国内',
+            'tech': '科技',
+            'military': '军事',
+            'intl': '国际',
+            'livelihood': '民生'
+        };
+        const targetBadge = catNameMap[catId] || '';
+        const filtered = allClusters.filter(c => 
+            c.category === catId || 
+            c.badge === targetBadge || 
+            c.badge === catId || 
+            c.cluster_id === catId
+        );
+        renderClusters(filtered.length > 0 ? filtered : allClusters);
     }
 }
