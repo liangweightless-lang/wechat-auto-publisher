@@ -2128,10 +2128,16 @@ body {
     white-space: nowrap;
 }
 .today-radar-kw-list {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 5px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.today-radar-kw-list::-webkit-scrollbar {
+    display: none;
 }
 .today-radar-kw-chip {
     font-size: 10.5px;

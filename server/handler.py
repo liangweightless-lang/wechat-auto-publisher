@@ -622,6 +622,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                 "digest": digest,
                 "theme": theme_choice,
                 "html_content": html_content,
+                "wechat_html": html_content,
                 "markdown_content": md_content,
                 "word_count": word_count,
                 "read_time": read_time,
@@ -630,6 +631,10 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                 "douyin_script": douyin_script,
                 "xiaohongshu_note": xiaohongshu_note
             })
+            try:
+                self.close_connection = True
+            except Exception:
+                pass
 
         except Exception as e:
             logger.error(f"处理流式生成失败: {e}", exc_info=True)

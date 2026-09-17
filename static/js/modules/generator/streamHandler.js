@@ -1,3 +1,7 @@
+import { state } from '../../store/state.js';
+import { showToast } from '../../utils/toast.js';
+import { refreshIcons } from '../../utils/dom.js';
+
 export function closeProgressModal() {
     const modal = document.getElementById('progressModal');
     if (modal) modal.classList.remove('active');
@@ -16,10 +20,6 @@ export function closeProgressModal() {
         state.totalTimerInterval = null;
     }
 }
-
-import { state } from '../../store/state.js';
-import { showToast } from '../../utils/toast.js';
-import { refreshIcons } from '../../utils/dom.js';
 
 export function toggleThinking() {
     state.isThinkingCollapsed = !state.isThinkingCollapsed;
@@ -176,8 +176,19 @@ export async function triggerMobileGenerate() {
                         if (wordCountEl) wordCountEl.innerText = `已生成 ${charLen} 字`;
                     }
                 } else if (eventType === 'done') {
+                    state.isGenerationCompleted = true;
                     setStepActive(5);
-                    handleGenerationDone(dataObj);
+                    try {
+                        if (reader && reader.cancel) await reader.cancel();
+                    } catch (_) {}
+                    try {
+                        handleGenerationDone(dataObj);
+                    } catch (doneErr) {
+                        console.error('handleGenerationDone 处理异常:', doneErr);
+                        const modal = document.getElementById('progressModal');
+                        if (modal) modal.classList.remove('active');
+                        if (window.app && window.app.switchMainTab) window.app.switchMainTab('matrix');
+                    }
                     return;
                 } else if (eventType === 'error') {
                     showToast(dataObj.message || '生成中断', 'error');
@@ -189,6 +200,10 @@ export async function triggerMobileGenerate() {
             }
         }
     } catch (e) {
+        if (state.isGenerationCompleted || e.name === 'AbortError') {
+            console.log('推演已正常完成或安全释放流连接');
+            return;
+        }
         showToast('生成请求异常: ' + e.message, 'error');
         if (statusMsg) {
             statusMsg.innerHTML = `<span style="color: #ef4444; font-weight: 600;">推演中断: ${e.message}</span> <button onclick="window.app.closeProgressModal()" style="margin-left: 8px; padding: 2px 10px; border-radius: 4px; background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 11px; cursor: pointer;">关闭返回</button>`;
@@ -206,11 +221,11 @@ export function handleGenerationDone(data) {
     state.currentGeneratedData = data;
 
     const mockTitle = document.getElementById('previewMockTitle');
-    if (mockTitle) mockTitle.innerText = data.title;
+    if (mockTitle && data.title) mockTitle.innerText = data.title;
 
     const previewBody = document.getElementById('mobilePreviewContent');
     if (previewBody) {
-        previewBody.innerHTML = data.wechat_html;
+        previewBody.innerHTML = data.wechat_html || data.html_content || '<p>研报排版完成</p>';
     }
 
     const dyEl = document.getElementById('douyinScriptText');
@@ -219,13 +234,22 @@ export function handleGenerationDone(data) {
     const xhsEl = document.getElementById('xiaohongshuNoteText');
     if (xhsEl) xhsEl.value = data.xiaohongshu_note || '暂无小红书图文笔记';
 
-    // 隐藏进度弹层
+    // 隐藏进度弹层并停止计时器
+    if (state.totalTimerInterval) {
+        clearInterval(state.totalTimerInterval);
+        state.totalTimerInterval = null;
+    }
     const modal = document.getElementById('progressModal');
     if (modal) modal.classList.remove('active');
 
-    // 自动切换到矩阵排版 Tab
-    if (window.app && window.app.switchMainTab) {
-        window.app.switchMainTab('matrix');
+    // 自动平滑切换到矩阵排版 Tab
+    try {
+        if (window.app && window.app.switchMainTab) {
+            window.app.switchMainTab('matrix');
+        }
+    } catch (tabErr) {
+        console.warn('切换矩阵排版Tab微弱异常:', tabErr);
     }
+
     showToast('智库深度研报生成完毕！', 'success');
 }

@@ -114,7 +114,7 @@ export async function loadStrategyData() {
 export function updateHomeRadarBar(keywords) {
     const container = document.getElementById('todayRadarKeywords');
     if (!container || !Array.isArray(keywords) || keywords.length === 0) return;
-    container.innerHTML = keywords.slice(0, 6).map(kw => `
+    container.innerHTML = keywords.map(kw => `
         <span class="today-radar-kw-chip">${kw}</span>
     `).join('');
 }
