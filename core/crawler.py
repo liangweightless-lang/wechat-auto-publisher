@@ -122,22 +122,43 @@ class DefenseCrawler:
     @classmethod
     def fetch_multi_source_topics(cls, category: str = "all", limit: int = 20) -> List[Dict[str, Any]]:
         """
-        跨渠道多源抓取热点并按四大垂直体系归类
+        跨渠道多源抓取热点并按四大垂直体系归类。
+        优先级：① 联合国官方 ② 新华社英文官方 ③ 卫星社外网 ④ 今日头条热搜
         """
         history = cls.load_history()
-        raw_items = []
+        official_items = []
+        trending_items = []
 
-        # 1. 抓取外网官方权威源 (俄罗斯卫星通讯社 2026 实时流)
-        sputnik_topics = cls._fetch_sputnik_official()
-        raw_items.extend(sputnik_topics)
+        # ① 联合国新闻（最高权威官方）
+        try:
+            un_topics = cls._fetch_un_news_official()
+            official_items.extend(un_topics)
+        except Exception as e:
+            logger.warning(f"UN RSS 异常: {e}")
 
-        # 2. 抓取今日头条 2026 实时防务焦点
-        tt_topics = cls._fetch_toutiao_hot()
-        raw_items.extend(tt_topics)
+        # ② 新华社英文（国家级官方权威）
+        try:
+            xinhua_topics = cls._fetch_xinhua_official()
+            official_items.extend(xinhua_topics)
+        except Exception as e:
+            logger.warning(f"新华社 RSS 异常: {e}")
 
-        # 3. 补充四大垂直体系精选智库战报池
-        curated = cls._get_curated_product_intel_bank()
-        raw_items.extend(curated)
+        # ③ 俄罗斯卫星社外网（国际一手战报）
+        try:
+            sputnik_topics = cls._fetch_sputnik_official()
+            official_items.extend(sputnik_topics)
+        except Exception as e:
+            logger.warning(f"卫星社 RSS 异常: {e}")
+
+        # ④ 今日头条热搜（国内热点舆情趋势）
+        try:
+            tt_topics = cls._fetch_toutiao_hot()
+            trending_items.extend(tt_topics)
+        except Exception as e:
+            logger.warning(f"头条热搜异常: {e}")
+
+        # 合并：官方置前，热点跟随
+        raw_items = official_items + trending_items
 
         # 去重与分类过滤
         seen_titles = set(history)
@@ -248,87 +269,102 @@ class DefenseCrawler:
         return items
 
     @classmethod
-    def _get_curated_product_intel_bank(cls) -> List[Dict[str, Any]]:
-        """四大垂直选题体系专属标杆智库库"""
-        return [
-            # === 1. 国际军事热点 (军事科技/战法/冲突/演习/论坛) ===
-            {
-                "title": "‘马赛克战’在红海实战中的初级形态：胡塞多维异构无人蜂群与分布式杀伤拆解",
-                "url": "https://www.toutiao.com/search?keyword=" + urllib.parse.quote("马赛克战 无人蜂群 红海实战"),
-                "source": "军事学术与战法透视",
-                "is_overseas": False,
-                "pub_time": "2026-09-17 08:50 (战术专栏)",
-                "hot": "爆款研判",
-                "category": "military_hot",
-                "summary": "从战术学术角度，剖析由廉价民用组装体、老式反舰弹和无人巡飞弹构成的弹性作战网络如何让美军传统集中指挥链路失效。"
-            },
-            {
-                "title": "美日澳‘漆黑-2026’跨国多空协同联合演习：针对南海与西太练了什么核心课目？",
-                "url": "https://www.toutiao.com/search?keyword=" + urllib.parse.quote("漆黑演习 美日澳 西太演练"),
-                "source": "联合演习战报分析",
-                "is_overseas": True,
-                "pub_time": "演训深潜",
-                "hot": "前沿态势",
-                "category": "military_hot",
-                "summary": "三国防区外隐身协同突防、敏捷战斗部署（ACE）与海空联合电子压制课目大曝光，背后战略意图深度起底。"
-            },
+    def _fetch_xinhua_official(cls) -> List[Dict[str, Any]]:
+        """新华社英文官方 RSS 抓取（国际权威消息）"""
+        url = "https://www.xinhuanet.com/english/rss/worldrss.xml"
+        headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+        items = []
+        try:
+            res = requests.get(url, headers=headers, timeout=6, verify=False)
+            if res.status_code == 200:
+                root = ET.fromstring(res.content)
+                for it in root.findall('.//item')[:20]:
+                    title_el = it.find('title')
+                    link_el = it.find('link')
+                    pub_el = it.find('pubDate')
+                    desc_el = it.find('description')
+                    if title_el is None or not title_el.text:
+                        continue
+                    title_raw = title_el.text.strip()
+                    link = link_el.text.strip() if link_el is not None else ""
+                    pub_str = pub_el.text.strip() if pub_el is not None else ""
+                    desc = desc_el.text.strip() if desc_el is not None else ""
 
-            # === 2. 深度国际关系 (长线裂变、百年宿怨、教派与经济死结) ===
-            {
-                "title": "【胡塞-沙特长线专题①】从萨达贫瘠山区到红海咽喉霸主：也门胡塞武装崛起全史",
-                "url": "https://www.toutiao.com/search?keyword=" + urllib.parse.quote("胡塞武装发展史 萨达起义"),
-                "source": "深度国际关系专辑",
-                "is_overseas": False,
-                "pub_time": "2026-09-17 09:10 (深度专题)",
-                "hot": "专题连载",
-                "category": "relations",
-                "summary": "拆解1990年代青年信仰者运动起源，梳理萨利赫政权剿杀、六次萨达战争及2014年夺取首都萨那的历史裂变脉络。"
-            },
-            {
-                "title": "【胡塞-沙特长线专题②】逊尼派王权与什叶派分支千年教派宿怨：不仅是边界争端，更是生存博弈",
-                "url": "https://www.toutiao.com/search?keyword=" + urllib.parse.quote("沙特 也门 宗教矛盾 瓦哈比 宰德派"),
-                "source": "中东历史与宗教学术",
-                "is_overseas": False,
-                "pub_time": "2026-09-17 09:20 (深度专题)",
-                "hot": "历史深潜",
-                "category": "relations",
-                "summary": "深挖瓦哈比教派扩张对也门北部传统宰德派边缘化的百年宗教排斥，剖析教派矛盾背后的民族血缘与资源争夺本质。"
-            },
+                    if cls._is_stale(link, pub_str):
+                        continue
 
-            # === 3. 先进武器追踪 (性能参数、战术运用与图纸源流) ===
-            {
-                "title": "美国‘暗鹰’LRHW高超音速导弹参数解密：乘波体滑翔弹头在亚太部署的攻防效能实测",
-                "url": "https://www.toutiao.com/search?keyword=" + urllib.parse.quote("美国暗鹰高超音速导弹 参数 射程"),
-                "source": "开源军工装备档案",
-                "is_overseas": True,
-                "pub_time": "兵器谱解密",
-                "hot": "硬核装备",
-                "category": "weapons",
-                "summary": "射程2775km、末端极速17马赫、桑格尔弹道，深入解算其第一岛链部署后对防御方相控阵预警窗口的压缩极限。"
-            },
-            {
-                "title": "俄军苏-57配装‘产品30’发动机与小型高超音速弹：五代隐身战机防区外点穴战术运用",
-                "url": "https://www.toutiao.com/search?keyword=" + urllib.parse.quote("苏57 产品30发动机 战术运用"),
-                "source": "战机航空动力档案",
-                "is_overseas": True,
-                "pub_time": "前沿航空",
-                "hot": "战法推演",
-                "category": "weapons",
-                "summary": "推重比突破10、全向矢量喷管与机腹隐蔽弹舱适配新型Kh-69隐身巡航导弹的战区突防作战效能深度复盘。"
-            },
+                    is_defense = any(k in title_raw for k in cls.DEFENSE_KEYWORDS) or any(
+                        k.lower() in title_raw.lower() for k in [
+                            "military", "missile", "drone", "attack", "war", "conflict",
+                            "weapons", "nuclear", "navy", "army", "troops", "combat",
+                            "exercise", "strike", "defense", "sanction", "Taiwan", "Ukraine",
+                            "Gaza", "Houthi", "Iran", "Russia", "China sea"
+                        ]
+                    )
+                    is_excluded = any(bad in title_raw for bad in cls.EXCLUDE_KEYWORDS)
 
-            # === 4. 国家地区舆情追踪 (南海/台海近一月动向与企图剖析) ===
-            {
-                "title": "【南海近30天舆情动向大起底】周边国家频繁小动作背后的企图是什么？",
-                "url": "https://www.toutiao.com/search?keyword=" + urllib.parse.quote("南海 菲律宾 美菲联演 舆情动向"),
-                "source": "海洋战略与舆情监视",
-                "is_overseas": False,
-                "pub_time": "2026-09-17 08:00 (近月动态)",
-                "hot": "舆情纵深",
-                "category": "regional_intel",
-                "summary": "复盘过去一个月菲方在仙宾礁、仁爱礁的补给袭扰与美军外部军舰策应频率，从动向反切其配合域外大国的战术战略图谋。"
-            }
-        ]
+                    if is_defense and not is_excluded:
+                        time_tag = cls._format_time(dt_str=pub_str)
+                        cat = cls._classify_topic(title_raw)
+                        items.append({
+                            "title": title_raw,
+                            "url": link,
+                            "source": "📡 新华社·官方英文",
+                            "is_overseas": True,
+                            "is_official": True,
+                            "pub_time": time_tag,
+                            "hot": "权威官方",
+                            "category": cat,
+                            "summary": desc[:200] if desc else f"新华社英文官方发布，时间：{time_tag}。"
+                        })
+        except Exception as e:
+            logger.warning(f"抓取新华社英文 RSS 失败: {e}")
+        return items
+
+    @classmethod
+    def _fetch_un_news_official(cls) -> List[Dict[str, Any]]:
+        """联合国中文和平安全频道 RSS（最高级国际权威）"""
+        url = "https://news.un.org/feed/subscribe/zh/news/topic/peace-and-security/feed/rss.xml"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        items = []
+        try:
+            res = requests.get(url, headers=headers, timeout=7, verify=False)
+            if res.status_code == 200:
+                root = ET.fromstring(res.content)
+                for it in root.findall('.//item')[:15]:
+                    title_el = it.find('title')
+                    link_el = it.find('link')
+                    pub_el = it.find('pubDate')
+                    desc_el = it.find('description')
+                    if title_el is None or not title_el.text:
+                        continue
+                    title_raw = title_el.text.strip()
+                    link = link_el.text.strip() if link_el is not None else ""
+                    pub_str = pub_el.text.strip() if pub_el is not None else ""
+                    desc = desc_el.text.strip() if desc_el is not None else ""
+                    # UN news 全是权威安全类，无需过滤
+                    if cls._is_stale(link, pub_str):
+                        continue
+                    time_tag = cls._format_time(dt_str=pub_str)
+                    cat = cls._classify_topic(title_raw)
+                    items.append({
+                        "title": title_raw,
+                        "url": link,
+                        "source": "🌐 联合国新闻·中文",
+                        "is_overseas": True,
+                        "is_official": True,
+                        "pub_time": time_tag,
+                        "hot": "联合国",
+                        "category": cat,
+                        "summary": desc[:200] if desc else f"联合国和平安全频道官方发布，时间：{time_tag}。"
+                    })
+        except Exception as e:
+            logger.warning(f"抓取联合国 RSS 失败: {e}")
+        return items
+
+    @classmethod
+    def fetch_hot_topics(cls, keywords: List[str] = None, limit: int = 15) -> List[Dict[str, Any]]:
+        return cls.fetch_multi_source_topics(category="all", limit=limit)
 
     @classmethod
     def fetch_hot_topics(cls, keywords: List[str] = None, limit: int = 15) -> List[Dict[str, Any]]:
@@ -465,6 +501,13 @@ class DefenseCrawler:
             "time": now,
             "data": clusters
         }
+        # 排序：1. 有官方权威信源的聚类排最前; 2. 条目数（热度）降序; 3. 时间新优先
+        def cluster_sort_key(c):
+            has_official = any(item.get("is_official", False) for item in c.get("items", []))
+            topic_count = c.get("topic_count", 1)
+            return (0 if has_official else 1, -topic_count)
+
+        clusters.sort(key=cluster_sort_key)
         return clusters
 
     @classmethod
