@@ -170,6 +170,21 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
 
+        # 0.1 [API] 按需搜集政府与外交部官方公告: POST /api/topics/expand_sources
+        if path == "/api/topics/expand_sources":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len).decode("utf-8")
+                data = json.loads(body)
+                kw = data.get("keyword", "")
+                c_name = data.get("cluster_name", "")
+                officials = DefenseCrawler.search_official_statements(keyword=kw, cluster_name=c_name)
+                self._send_json({"code": 200, "items": officials})
+            except Exception as e:
+                logger.error(f"扩展官方信源失败: {e}")
+                self._send_json({"code": 500, "message": str(e)})
+            return
+
         # 0. [API] 单篇/多篇新闻正文实时抓取: POST /api/topics/fetch_content
         if path == "/api/topics/fetch_content":
             try:

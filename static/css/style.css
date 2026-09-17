@@ -1680,3 +1680,68 @@ body {
 .dock-action-btn:active {
     transform: scale(0.94);
 }
+
+/* ==========================================================================
+   V5.0 官方政府/外交部金盾信源与按需扩展样式
+   ========================================================================== */
+
+/* 官方高权重公告卡片 (金盾高光) */
+.sub-news-item.official-item {
+    background: #fffdfa;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    box-shadow: 0 1px 4px rgba(245, 158, 11, 0.08);
+}
+
+.sub-news-item.official-item.checked {
+    background: #fef3c7;
+    border-color: #d97706;
+}
+
+.official-badge-gold {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(217, 119, 6, 0.12);
+    color: #b45309;
+    border: 1px solid rgba(217, 119, 6, 0.2);
+}
+
+/* 专题底部按需扩展信源大按钮 */
+.expand-sources-container {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--border);
+    display: flex;
+    justify-content: center;
+}
+
+.expand-sources-btn {
+    width: 100%;
+    border: 1px dashed rgba(37, 99, 235, 0.4);
+    background: var(--bg-card);
+    color: var(--primary);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.expand-sources-btn:active {
+    background: var(--primary-light);
+    transform: scale(0.98);
+}
+
+.expand-sources-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}

@@ -182,8 +182,14 @@ function renderClusters(clusters) {
                         <span>全选本专题</span>
                     </button>
                 </div>
-                <div class="sub-news-list">
+                <div class="sub-news-list" id="subList_${cluster.cluster_id}">
                     ${renderSubNewsItems(cluster.cluster_id, cluster.items)}
+                </div>
+                <div class="expand-sources-container">
+                    <button class="expand-sources-btn" id="expandBtn_${cluster.cluster_id}" onclick="expandOfficialSources('${cluster.cluster_id}', event)">
+                        <i data-lucide="shield" style="width: 13px; height: 13px;"></i>
+                        <span>搜集本事件更多官方公告与外交部发言</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -203,18 +209,22 @@ function renderSubNewsItems(clusterId, items) {
         const pubTime = item.pub_time || '刚刚';
         const url = item.url || '';
 
+        const isOfficial = !!item.is_official;
         subHtml += `
-        <div class="sub-news-item ${isChecked ? 'checked' : ''}" id="subItem_${key}" onclick="toggleSelectNews('${clusterId}', ${itemIdx}, event)">
+        <div class="sub-news-item ${isChecked ? 'checked' : ''} ${isOfficial ? 'official-item' : ''}" id="subItem_${key}" onclick="toggleSelectNews('${clusterId}', ${itemIdx}, event)">
             <div class="sub-checkbox">
                 ${isChecked ? '<i data-lucide="check" style="width: 12px; height: 12px;"></i>' : ''}
             </div>
             <div class="sub-news-body">
-                <div class="sub-news-title">${item.title}</div>
+                <div class="sub-news-title">
+                    ${isOfficial ? '<span class="official-badge-gold"><i data-lucide="shield-check" style="width: 10px; height: 10px;"></i>官方权威</span> ' : ''}
+                    ${item.title}
+                </div>
                 <div class="sub-news-meta">
                     <span>${source}</span>
                     <span>·</span>
                     <span>${pubTime}</span>
-                    ${url ? `<span>·</span><a href="${url}" target="_blank" onclick="event.stopPropagation()" style="color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><i data-lucide="external-link" style="width: 10px; height: 10px;"></i>原文</a>` : ''}
+                    ${url ? `<span>·</span><a href="${url}" target="_blank" onclick="event.stopPropagation()" style="color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><i data-lucide="external-link" style="width: 10px; height: 10px;"></i>出处公告</a>` : ''}
                 </div>
             </div>
         </div>
@@ -938,4 +948,66 @@ function triggerMultiSelectGenerate() {
         return;
     }
     triggerMobileGenerate();
+}
+
+async function expandOfficialSources(clusterId, event) {
+    if (event) event.stopPropagation();
+    const cluster = currentClustersData.find(c => c.cluster_id === clusterId);
+    if (!cluster) return;
+
+    const btn = document.getElementById(`expandBtn_${clusterId}`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="spin-icon" style="width: 13px; height: 13px;"></i> 正在深度检索外交部答问、国防部公报与联合国声明...';
+        refreshIcons();
+    }
+
+    try {
+        const resp = await fetch('/api/topics/expand_sources', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                keyword: cluster.main_title,
+                cluster_name: cluster.cluster_name
+            })
+        });
+        const data = await resp.json();
+        if (data.code === 200 && data.items && data.items.length > 0) {
+            // 过滤重复标题
+            const existingTitles = new Set(cluster.items.map(i => i.title));
+            const newOfficials = data.items.filter(i => !existingTitles.has(i.title));
+
+            if (newOfficials.length > 0) {
+                cluster.items.unshift(...newOfficials); // 官方公报置顶
+                cluster.topic_count = cluster.items.length;
+                if (!cluster.sources) cluster.sources = [];
+                newOfficials.forEach(o => {
+                    if (!cluster.sources.includes(o.source)) cluster.sources.push(o.source);
+                });
+
+                // 重新渲染该专题的子列表
+                const subListEl = document.getElementById(`subList_${clusterId}`);
+                if (subListEl) {
+                    subListEl.innerHTML = renderSubNewsItems(clusterId, cluster.items);
+                }
+
+                showToast(`🎉 已成功搜集并置顶 ${newOfficials.length} 篇外交部/联合国官方通报！`);
+            } else {
+                showToast('该事件暂无更多增量官方通报', 'info');
+            }
+
+            if (btn) {
+                btn.innerHTML = '<i data-lucide="check" style="width: 13px; height: 13px; color: #16a34a;"></i> 官方公告与发言搜集就绪';
+            }
+        } else {
+            showToast('未检索到更多关联官方通报', 'info');
+            if (btn) btn.innerHTML = '<i data-lucide="shield" style="width: 13px; height: 13px;"></i> 重新检索官方公告';
+        }
+    } catch (e) {
+        showToast('检索官方公告异常: ' + e.message, 'error');
+        if (btn) btn.innerHTML = '<i data-lucide="shield" style="width: 13px; height: 13px;"></i> 重新检索官方公告';
+    } finally {
+        if (btn) btn.disabled = false;
+        refreshIcons();
+    }
 }
