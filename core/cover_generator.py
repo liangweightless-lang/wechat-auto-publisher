@@ -7,6 +7,7 @@
 3. 注入电影级暗角调色、精致双语大标头与战术坐标水印。
 """
 
+import datetime
 from pathlib import Path
 from typing import Optional
 from config.settings import logger

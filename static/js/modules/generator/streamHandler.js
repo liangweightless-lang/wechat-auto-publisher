@@ -1,3 +1,22 @@
+export function closeProgressModal() {
+    const modal = document.getElementById('progressModal');
+    if (modal) modal.classList.remove('active');
+
+    const genBtn = document.getElementById('mobileGenBtn');
+    const genSpinner = document.getElementById('mobileGenSpinner');
+    const genIcon = document.getElementById('mobileGenIcon');
+    const genText = document.getElementById('mobileGenText');
+    if (genBtn) genBtn.disabled = false;
+    if (genSpinner) genSpinner.style.display = 'none';
+    if (genIcon) genIcon.style.display = 'inline-block';
+    if (genText) genText.innerText = '开始深度研判并生成推文';
+
+    if (state.totalTimerInterval) {
+        clearInterval(state.totalTimerInterval);
+        state.totalTimerInterval = null;
+    }
+}
+
 import { state } from '../../store/state.js';
 import { showToast } from '../../utils/toast.js';
 import { refreshIcons } from '../../utils/dom.js';
@@ -143,6 +162,13 @@ export async function triggerMobileGenerate() {
                     }
                 } else if (eventType === 'content') {
                     setStepActive(3);
+                    // 自动折叠思考链，将全部高度留给长文阅读
+                    const thinkingBox = document.getElementById('thinkingText');
+                    const thinkingArrow = document.getElementById('thinkingArrow');
+                    if (thinkingBox && !thinkingBox.classList.contains('collapsed')) {
+                        thinkingBox.classList.add('collapsed');
+                        if (thinkingArrow) thinkingArrow.style.transform = 'rotate(-90deg)';
+                    }
                     if (streamText) {
                         streamText.innerText += dataObj.text || '';
                         streamText.scrollTop = streamText.scrollHeight;
@@ -155,14 +181,18 @@ export async function triggerMobileGenerate() {
                     return;
                 } else if (eventType === 'error') {
                     showToast(dataObj.message || '生成中断', 'error');
-                    if (statusMsg) statusMsg.innerText = '错误: ' + dataObj.message;
+                    if (statusMsg) {
+                        statusMsg.innerHTML = `<span style="color: #ef4444; font-weight: 600;">推演异常: ${dataObj.message}</span> <button onclick="window.app.closeProgressModal()" style="margin-left: 8px; padding: 2px 10px; border-radius: 4px; background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 11px; cursor: pointer;">关闭返回</button>`;
+                    }
                     return;
                 }
             }
         }
     } catch (e) {
         showToast('生成请求异常: ' + e.message, 'error');
-        if (statusMsg) statusMsg.innerText = '推演中断: ' + e.message;
+        if (statusMsg) {
+            statusMsg.innerHTML = `<span style="color: #ef4444; font-weight: 600;">推演中断: ${e.message}</span> <button onclick="window.app.closeProgressModal()" style="margin-left: 8px; padding: 2px 10px; border-radius: 4px; background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 11px; cursor: pointer;">关闭返回</button>`;
+        }
     } finally {
         if (genBtn) genBtn.disabled = false;
         if (genSpinner) genSpinner.style.display = 'none';

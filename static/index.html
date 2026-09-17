@@ -6,7 +6,7 @@
     <title>局势洞见 · 微信公众号创作工作台</title>
     <!-- Lucide 现代极简矢量图标库 -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=7.0">
+    <link rel="stylesheet" href="/static/css/style.css?v=8.0">
 </head>
 <body>
 
@@ -352,7 +352,7 @@
     </nav>
 
     <!-- ======================= 现代化流式思考推演弹层 ======================= -->
-    <div class="stepper-mask" id="progressModal">
+    <div class="stepper-mask" id="progressModal" onclick="if(event.target === this) window.app.closeProgressModal()">
         <div class="stepper-box">
             <div class="stepper-header">
                 <div class="stepper-title">
@@ -360,7 +360,12 @@
                     <span>智库推演中枢</span>
                     <span class="stepper-badge" id="modalEngineBadge">DeepSeek-R1 推理流</span>
                 </div>
-                <div class="stepper-timer" id="totalTimer">耗时 0s</div>
+                <div class="stepper-header-right">
+                    <div class="stepper-timer" id="totalTimer">耗时 0s</div>
+                    <button class="stepper-close-btn" id="stepperCloseBtn" onclick="window.app.closeProgressModal()" title="关闭/退出推演" aria-label="关闭">
+                        <i data-lucide="x" style="width: 17px; height: 17px;"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- 5步流水指示器 -->
@@ -408,7 +413,7 @@
     <!-- 轻量级手机 Toast 提示条 -->
     <div class="toast-bar" id="mobileToast">提示信息</div>
 
-    <script type="module" src="/static/js/main.js?v=9.0"></script>
+    <script type="module" src="/static/js/main.js?v=10.0"></script>
     <script>
         if (window.lucide) {
             lucide.createIcons();

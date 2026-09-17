@@ -5,7 +5,7 @@ import { showToast } from './utils/toast.js';
 import { initTheme, toggleTheme } from './modules/theme/themeManager.js';
 import { fetchAndRenderTopics, toggleCluster, expandOfficialSources, filterByDynamicCategory, renderDynamicCategories } from './modules/topics/topicCards.js';
 import { toggleSelectNews, selectAllInCluster, selectTopic, updateSelectedUI } from './modules/topics/topicSelector.js';
-import { triggerMobileGenerate, toggleThinking } from './modules/generator/streamHandler.js';
+import { triggerMobileGenerate, toggleThinking, closeProgressModal } from './modules/generator/streamHandler.js';
 import { switchPlatform, copyActiveContent } from './modules/matrix/matrixView.js';
 import { openHistoryDrawer, closeHistoryDrawer, loadHistoryArticles, loadHistoryArticleDetail, showSourceNewsModal } from './modules/history/historyView.js';
 import { openStrategyDrawer, closeStrategyDrawer, loadStrategyData, sendStrategyTuneMessage, triggerAiRadarRefresh, resetStrategyToDefault, syncTodayRadarToHome } from './modules/strategy/strategyChat.js';
@@ -180,6 +180,7 @@ window.app = {
     expandOfficialSources,
     triggerMobileGenerate,
     toggleThinking,
+    closeProgressModal,
     switchPlatform,
     copyActiveContent,
     triggerMobilePublish,

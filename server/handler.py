@@ -11,6 +11,7 @@ Web 控制台请求处理核心模块
 """
 
 import os
+import datetime
 import json
 import cgi
 import mimetypes
@@ -355,7 +356,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                 article_images.append({"url": "/assets/tactical_situation.jpg", "caption": "▲ 战术态势推演：关键海域防空雷达探测盲区与突防弹道示意"})
 
             sources_list = CURRENT_CACHE.get("sources_list") or [
-                f"防务官方通报与公开战报研判池 ({datetime.now().strftime('%Y-%m-%d')})",
+                f"防务官方通报与公开战报研判池 ({datetime.datetime.now().strftime('%Y-%m-%d')})",
                 "全球海事安全通报与雷达侦测遥感情报"
             ]
 
@@ -433,7 +434,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                 try:
                     articles_list = json.loads(selected_articles_str)
                     if isinstance(articles_list, list) and len(articles_list) > 0:
-                        packet_lines = [f"【多源实时战略情报输入包 · 采样基准：{datetime.now().strftime('%Y年%m月%d日')}】\n"]
+                        packet_lines = [f"【多源实时战略情报输入包 · 采样基准：{datetime.datetime.now().strftime('%Y年%m月%d日')}】\n"]
                         for idx, art in enumerate(articles_list):
                             url = art.get("url", "")
                             title = art.get("title", "")
@@ -575,7 +576,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                     pass
             if not sources_list:
                 sources_list = [
-                    f"防务官方通报与公开战报研判池 ({datetime.now().strftime('%Y-%m-%d')})",
+                    f"防务官方通报与公开战报研判池 ({datetime.datetime.now().strftime('%Y-%m-%d')})",
                     "全球海事安全通报与雷达侦测遥感情报"
                 ]
 
