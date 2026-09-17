@@ -89,7 +89,9 @@ class ImageService:
     @classmethod
     def _get_api_key(cls) -> str:
         """获取有效的 SiliconFlow API Key"""
-        return os.getenv("SILICONFLOW_API_KEY") or settings.LLM_API_KEY or ""
+        from core.db import DatabaseManager
+        cfg = DatabaseManager.get_llm_config()
+        return cfg.get("api_key", "").strip() or settings.LLM_API_KEY or os.getenv("SILICONFLOW_API_KEY", "").strip()
 
     @classmethod
     def detect_region_and_caption(cls, title: str, content: str = "") -> Dict[str, str]:
@@ -119,7 +121,7 @@ class ImageService:
         style_key: str = "photojournalism",
         output_path: str = "assets/flux_illustration.jpg"
     ) -> Optional[str]:
-        """调用 SiliconFlow 图像大模型生成场景纪实大片"""
+        """优先调用当前可用图像大模型（智谱 CogView-3-Flash / 硅基流动）生成场景纪实大片"""
         api_key = cls._get_api_key()
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -128,17 +130,39 @@ class ImageService:
             logger.warning("未检测到有效生图 API Key，启用战术态势底图机制")
             return cls.generate_tactical_infographic(prompt[:25], output_path=output_path)
 
+        enhanced_prompt = cls.enhance_prompt(prompt, style_key)
+        logger.info(f"🎨 调用 AI 视觉引擎生成配图: {enhanced_prompt[:40]}...")
+
+        # 1. 优先检测智谱 BigModel 平台 (CogView-3-Flash，生成速度快且画质极高)
+        if "." in api_key or "bigmodel.cn" in getattr(settings, "LLM_BASE_URL", ""):
+            zhipu_url = "https://open.bigmodel.cn/api/paas/v4/images/generations"
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+            payload = {
+                "model": "cogview-3-flash",
+                "prompt": enhanced_prompt,
+                "size": "1024x1024"
+            }
+            try:
+                resp = requests.post(zhipu_url, headers=headers, json=payload, timeout=35)
+                data = resp.json()
+                if resp.status_code == 200 and "data" in data and len(data["data"]) > 0:
+                    img_url = data["data"][0]["url"]
+                    img_resp = requests.get(img_url, timeout=25)
+                    with open(out, "wb") as f:
+                        f.write(img_resp.content)
+                    logger.info(f"🎉 智谱 CogView-3-Flash 配图生成成功: {out}")
+                    return str(out)
+                else:
+                    logger.warning(f"智谱 CogView 生图返回异常: {data}")
+            except Exception as e_zp:
+                logger.warning(f"智谱生图调用异常: {e_zp}")
+
+        # 2. 备选 SiliconFlow 模型
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
-
-        enhanced_prompt = cls.enhance_prompt(prompt, style_key)
-        logger.info(f"🎨 调用 AI 视觉引擎生成配图: {enhanced_prompt[:40]}...")
-
-        # 优先使用实测稳定的极速模型 Tongyi-MAI/Z-Image-Turbo，备选 Kwai-Kolors/Kolors
         candidate_models = ["Tongyi-MAI/Z-Image-Turbo", "Kwai-Kolors/Kolors"]
-
         for model in candidate_models:
             payload = {
                 "model": model,
@@ -155,10 +179,8 @@ class ImageService:
                         f.write(img_resp.content)
                     logger.info(f"🎉 场景配图生成成功 [{model}]: {out}")
                     return str(out)
-                else:
-                    logger.warning(f"模型 {model} 返回异常: {data.get('message') or data}")
             except Exception as e:
-                logger.warning(f"模型 {model} 请求失败: {e}")
+                pass
 
         # 出错时降级为本地战术图
         return cls.generate_tactical_infographic(prompt[:25], output_path=output_path)
@@ -188,21 +210,31 @@ class ImageService:
             )
             logger.info(f"🗺️ 正在为新闻生成专属地缘态势地图: {reg_info['region']}...")
             try:
-                headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-                payload = {
-                    "model": "Tongyi-MAI/Z-Image-Turbo",
-                    "prompt": map_prompt,
-                    "image_size": "1024x576"
-                }
-                resp = requests.post(SILICONFLOW_API_URL, headers=headers, json=payload, timeout=20)
-                data = resp.json()
-                if "images" in data and len(data["images"]) > 0:
-                    img_url = data["images"][0]["url"]
-                    img_resp = requests.get(img_url, timeout=15)
-                    with open(out, "wb") as f:
-                        f.write(img_resp.content)
-                    logger.info(f"🎉 地缘态势地图生成成功: {out}")
-                    return str(out), caption
+                if "." in api_key or "bigmodel.cn" in getattr(settings, "LLM_BASE_URL", ""):
+                    zp_url = "https://open.bigmodel.cn/api/paas/v4/images/generations"
+                    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+                    payload = {"model": "cogview-3-flash", "prompt": map_prompt, "size": "1024x1024"}
+                    resp = requests.post(zp_url, headers=headers, json=payload, timeout=35)
+                    data = resp.json()
+                    if resp.status_code == 200 and "data" in data and len(data["data"]) > 0:
+                        img_url = data["data"][0]["url"]
+                        img_resp = requests.get(img_url, timeout=25)
+                        with open(out, "wb") as f:
+                            f.write(img_resp.content)
+                        logger.info(f"🎉 智谱 CogView 地缘态势地图测绘生成成功: {out}")
+                        return str(out), caption
+                else:
+                    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+                    payload = {"model": "Tongyi-MAI/Z-Image-Turbo", "prompt": map_prompt, "image_size": "1024x576"}
+                    resp = requests.post(SILICONFLOW_API_URL, headers=headers, json=payload, timeout=20)
+                    data = resp.json()
+                    if "images" in data and len(data["images"]) > 0:
+                        img_url = data["images"][0]["url"]
+                        img_resp = requests.get(img_url, timeout=15)
+                        with open(out, "wb") as f:
+                            f.write(img_resp.content)
+                        logger.info(f"🎉 地缘态势地图生成成功: {out}")
+                        return str(out), caption
             except Exception as e:
                 logger.warning(f"AI 地图在线生成失败，启用本地高清地缘底图: {e}")
 

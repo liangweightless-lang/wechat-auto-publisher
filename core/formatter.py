@@ -217,12 +217,25 @@ class WeChatFormatter:
         """
         theme = cls.get_theme(theme_name)
 
-        # 1. 提取导读部分
+        # 0. 智能章节结构规范化（兼容 【章节名】、序数标题 与 标准 Markdown ##）
+        # 0.1 提取并规范化导读
         lead_content = ""
-        lead_match = re.search(r'【导读】[\s:：]*(.*?)(?=\n##|\n#|\Z)', markdown_text, re.DOTALL)
+        lead_match = re.search(r'(?:【导读】|【前瞻内参】|##\s*导读)[\s:：]*(.*?)(?=\n##|\n【|\n#|\Z)', markdown_text, re.DOTALL)
         if lead_match:
             lead_content = lead_match.group(1).strip()
             markdown_text = markdown_text.replace(lead_match.group(0), "")
+
+        # 0.2 将模型生成的 【章节名】 自动转换为标准的 ## 章节标题
+        def _normalize_brackets_title(m):
+            t = m.group(1).strip()
+            if any(k in t for k in ["导读", "摘要", "前言"]):
+                return ""
+            return f"\n\n## {t}\n\n"
+
+        markdown_text = re.sub(r'^(?:【|\[)([^】\n]{2,30})(?:】|\])\s*$', _normalize_brackets_title, markdown_text, flags=re.MULTILINE)
+
+        # 0.3 将中文序数标题 (如 一、xxx 或 1. xxx 单独成行) 转换为 ##
+        markdown_text = re.sub(r'^(?:[一二三四五六七八九十]+[、.：\s]|[0-9]{1,2}[.、\s]+)([^#\n]{4,35})$', r'\n\n## \1\n\n', markdown_text, flags=re.MULTILINE)
 
         # 2. 预处理富文本内联组件 (Quote, Timeline, VS-card, Spec-grid, Insight-box)
         processed_md = cls._parse_custom_components(markdown_text, theme)
@@ -289,22 +302,26 @@ class WeChatFormatter:
         )
 
         # 7. 二级标题 <h2> (动态应用主题角标与主副标题)
+        chapter_counter = [0]
         def replace_h2(match):
+            chapter_counter[0] += 1
+            idx = chapter_counter[0]
             title = match.group(1).strip()
+            title = re.sub(r'^[#\s]+', '', title)
             num_match = re.match(r'^([0-9A-Za-z一二三四五六七八九十]+)[\s、.:](.*)', title)
             tag_prefix = theme["tag_prefix"]
             if num_match:
                 tag_num = num_match.group(1)
-                text_part = num_match.group(2)
+                text_part = num_match.group(2).strip()
                 badge_text = f"{tag_prefix} {tag_num}"
             else:
-                badge_text = tag_prefix
+                badge_text = f"{tag_prefix} 0{idx}" if idx < 10 else f"{tag_prefix} {idx}"
                 text_part = title
 
             return (
-                f'<section style="display: flex; align-items: center; margin: 34px 0 18px 0; padding-bottom: 8px; border-bottom: 2px solid {theme["border"]};">'
-                f'<span style="background: {theme["tag_bg"]}; color: {theme["tag_text"]}; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 4px; margin-right: 10px; text-transform: uppercase; letter-spacing: 0.5px;">{badge_text}</span>'
-                f'<span style="display: inline-block; font-size: 17.5px; font-weight: 700; color: {theme["primary"]}; letter-spacing: 0.5px;">{text_part}</span>'
+                f'<section style="margin: 38px 0 20px 0; padding-bottom: 10px; border-bottom: 2px solid {theme["border"]}; display: flex; align-items: center;">'
+                f'<span style="background: {theme["tag_bg"]}; color: {theme["tag_text"]}; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 4px; margin-right: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">{badge_text}</span>'
+                f'<span style="font-size: 18.5px; font-weight: 800; color: {theme["primary"]}; letter-spacing: 0.4px; line-height: 1.4;">{text_part}</span>'
                 f'</section>'
             )
 
