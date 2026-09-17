@@ -31,38 +31,72 @@ class DefenseCrawler:
     _TRANSLATE_CACHE: Dict[str, str] = {}  # 翻译结果内存缓存，避免重复调用
     _DISK_CACHE_FILE: Path = Path("storage/cached_topics.json")
     _REFRESHING_KEYS: set = set()  # 异步刷新防重锁
-    TAG_RULES = [
-        (["中东", "以色列", "黎巴嫩", "也门", "胡塞", "巴以", "加沙", "特拉维夫", "内塔尼亚胡", "伊朗", "叙利亚", "真主党", "贝鲁特"], "#中东局势"),
-        (["俄乌", "乌克兰", "基辅", "俄罗斯", "普京", "泽连斯基", "库尔斯克", "顿巴斯", "莫斯科", "克里米亚", "哈尔科夫"], "#俄乌战线"),
-        (["台海", "台湾", "赖清德", "台军", "澎湖", "金门", "两岸", "过航"], "#台海态势"),
-        (["南海", "仁爱礁", "菲律宾", "仙宾礁", "黄岩岛", "马尼拉", "侵闯"], "#南海动态"),
-        (["朝鲜", "半岛", "平壤", "朝韩", "首尔", "三八线", "金正恩"], "#半岛风云"),
-        (["美国", "白宫", "五角大楼", "特朗普", "拜登", "美军", "华盛顿", "印太"], "#美大选与战略"),
-        (["日本", "自卫队", "东京", "岸田", "石破茂", "防卫省"], "#日本防务"),
-        (["导弹", "高超音速", "弹道导弹", "防空", "反导", "爱国者", "S-400", "拦截", "火箭军"], "#防空反导"),
-        (["无人机", "蜂群", "察打一体", "低空", "FPV", "拦截无人机"], "#无人机攻防"),
-        (["航母", "驱逐舰", "核潜艇", "护卫舰", "战舰", "水面舰艇", "两栖攻击舰"], "#海战装备"),
-        (["战机", "五代机", "隐身", "轰炸机", "歼-20", "苏-57", "F-35", "空战", "突防"], "#航空战力"),
-        (["联合国", "安理会", "决议", "古特雷斯", "维和", "国际法院"], "#联合国安理会"),
-        (["外交部", "王毅", "发言人", "表态", "大国外交", "一带一路", "金砖", "领导人", "中方立场"], "#大国外交"),
-        (["演习", "演训", "军演", "联合演习", "实弹", "全流程", "常态化"], "#军事演练"),
-        (["制裁", "封锁", "贸易战", "脱钩", "出口管制", "关税", "打压"], "#战略制裁")
+    DOMAIN_RULES = [
+        (["先进制造", "制造业", "产业链", "产业体系", "实体经济", "工业"], ["#先进制造", "#产业升级"]),
+        (["习近平", "李强", "指示", "重要指示", "在京召开", "决策部署", "政策"], ["#政策定调", "#高层决策"]),
+        (["新质生产力", "自主可控", "核心技术", "科研", "创新驱动", "高质量发展"], ["#新质生产力", "#自主创新"]),
+        (["华为", "昇腾", "鸿蒙", "算力", "芯片", "半导体", "人工智能", "大模型", "ai"], ["#AI算力", "#核心硬件", "#科技前沿"]),
+        (["加沙", "巴以", "内塔尼亚胡", "以军", "特拉维夫", "以色列", "也门", "胡塞"], ["#以军行动", "#中东局势"]),
+        (["黎巴嫩", "贝鲁特", "真主党", "奈拜提耶", "撤军"], ["#黎以冲突", "#真主党"]),
+        (["红海", "曼德海峡", "亚丁湾", "商船", "护航"], ["#红海航运", "#胡塞武装"]),
+        (["导弹", "高超音速", "弹道导弹", "防空", "反导", "爱国者", "拦截", "火箭军", "S-400"], ["#高超音速", "#防空反导"]),
+        (["乌克兰", "基辅", "泽连斯基", "库尔斯克", "顿巴斯", "扎波罗热", "波克罗夫斯克"], ["#俄乌战线", "#实战动态"]),
+        (["俄罗斯", "俄军", "莫斯科", "普京", "国防部", "空天军"], ["#俄军动态", "#战略反击"]),
+        (["轰炸机", "战机", "苏-57", "歼-20", "图-95", "空袭", "制空权", "五代机"], ["#航空打击", "#空中战力"]),
+        (["台海", "台湾", "赖清德", "台军", "东部战区", "实弹", "巡航"], ["#台海态势", "#战备巡航"]),
+        (["南海", "仁爱礁", "菲律宾", "仙宾礁", "黄岩岛", "马尼拉", "侵闯"], ["#南海动态", "#维权执法"]),
+        (["日本", "自卫队", "东京", "石破茂", "防卫省", "军事野心"], ["#日本防务", "#地缘博弈"]),
+        (["联合国", "安理会", "决议", "古特雷斯", "维和", "和平安全"], ["#联合国", "#安理会"]),
+        (["外交部", "大国外交", "一带一路", "金砖", "元首会晤", "王毅", "多边合作"], ["#大国外交", "#战略互信"]),
+        (["美联储", "加息", "降息", "利率", "通胀", "美元", "流动性", "鲍威尔"], ["#全球金融", "#货币政策", "#流动性"]),
+        (["制裁", "关税", "贸易战", "脱钩", "打压", "出口管制", "封锁"], ["#战略博弈", "#经贸交锋"]),
+        (["无人机", "蜂群", "低空", "FPV", "察打一体", "反无人机"], ["#无人机攻防", "#前沿战术"]),
+        (["航母", "驱逐舰", "核潜艇", "护卫舰", "战舰", "水面舰艇"], ["#海军装备", "#深海博弈"])
     ]
 
     @classmethod
     def extract_tags(cls, title: str, summary: str = "") -> List[str]:
-        """基于第一性原理与防务实体词库智能提取 1~3 个核心关键字标签"""
+        """
+        参考主流热搜多标签体系：严格输出 2~4 个具体的实体、战区与属性标签
+        如：[#先进制造, #政策定调, #新质生产力] 或 [#中东局势, #防空反导, #以军行动]
+        """
         text = (title + " " + summary).lower()
-        matched = []
-        for keywords, tag in cls.TAG_RULES:
-            if any(k.lower() in text for k in keywords):
-                matched.append(tag)
-                if len(matched) >= 3:
-                    break
-        if not matched:
-            matched = ["#重点要闻"]
-        return matched
+        tags = []
 
+        # 1. 细化规则提取
+        for keywords, tag_list in cls.DOMAIN_RULES:
+            if any(k.lower() in text for k in keywords):
+                if isinstance(tag_list, list):
+                    for t in tag_list:
+                        if t not in tags:
+                            tags.append(t)
+                else:
+                    if tag_list not in tags:
+                        tags.append(tag_list)
+            if len(tags) >= 4:
+                break
+
+        # 2. 从标题核心实体补全（若不足2个标签）
+        if len(tags) < 2:
+            import re
+            clean_title = re.sub(r"[^\w一-龥]", " ", title)
+            words = [w for w in clean_title.split() if 2 <= len(w) <= 6]
+            for w in words:
+                candidate = f"#{w}"
+                if candidate not in tags and not any(bad in w for bad in ["重要", "发布", "召开", "会议", "表示", "今天", "进行", "工作"]):
+                    tags.append(candidate)
+                    if len(tags) >= 3:
+                        break
+
+        # 3. 兜底策略标签（确保不出现单标签）
+        fallback_pool = ["#前沿态势", "#战略研判", "#深度观察", "#国际热点"]
+        for fb in fallback_pool:
+            if len(tags) >= 3:
+                break
+            if fb not in tags:
+                tags.append(fb)
+
+        return tags[:3]
 
     @classmethod
     def _load_disk_cache(cls) -> Dict[str, Any]:
@@ -739,6 +773,38 @@ class DefenseCrawler:
             return ""
 
     @classmethod
+    def _calc_badge_and_score(cls, items: List[Dict[str, Any]], main_title: str) -> tuple:
+        """计算卡片左上角彩色徽章与85-99真实热度分"""
+        has_xinhua_people = any(any(k in it.get("source", "") for k in ["新华", "人民网"]) for it in items)
+        has_tech = any(any(k in (it.get("title", "") + main_title) for k in ["制造", "科技", "芯片", "算力", "卫星", "华为", "AI", "技术", "工业"]) for it in items)
+        has_military = any(any(k in it.get("source", "") or k in (it.get("title", "") + main_title) for k in ["军", "战", "防空", "导弹", "轰炸机", "演训", "撤军", "冲突", "以军", "俄军", "突防"]) for it in items)
+
+        if has_xinhua_people and not has_military:
+            badge = "国内"
+            badge_class = "badge-domestic"
+        elif has_tech:
+            badge = "科技"
+            badge_class = "badge-tech"
+        elif has_military:
+            badge = "军事"
+            badge_class = "badge-military"
+        else:
+            badge = "国际"
+            badge_class = "badge-intl"
+
+        has_official = any(it.get("is_official", False) for it in items)
+        count = len(items)
+        score = 90
+        if has_official:
+            score += 5
+        if count >= 3:
+            score += 4
+        elif count >= 2:
+            score += 2
+        score = min(99, max(85, score))
+        return badge, badge_class, score
+
+    @classmethod
     def cluster_topics(cls, topics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         同类新闻聚类算法 (Topic Clustering)
@@ -782,12 +848,16 @@ class DefenseCrawler:
                 if not c_tags:
                     c_tags = cls.extract_tags(grp["name"], matched_items[0]["title"])
 
+                badge, badge_class, score = cls._calc_badge_and_score(matched_items, matched_items[0]["title"])
                 clusters.append({
                     "cluster_id": f"cluster_{len(clusters)+1}",
                     "cluster_name": grp["name"],
                     "main_title": matched_items[0]["title"],
                     "topic_count": len(matched_items),
                     "category": matched_items[0].get("category", "综合热点"),
+                    "badge": badge,
+                    "badge_class": badge_class,
+                    "hot_score": score,
                     "sources": sources,
                     "latest_time": matched_items[0].get("pub_time", "刚刚"),
                     "keywords": c_tags[:3],
@@ -798,15 +868,20 @@ class DefenseCrawler:
         for idx, t in enumerate(topics):
             if idx in visited:
                 continue
+            s_badge, s_badge_class, s_score = cls._calc_badge_and_score([t], t.get("title", ""))
+            s_tags = t.get("keywords") or cls.extract_tags(t.get("title", ""))
             clusters.append({
                 "cluster_id": f"cluster_{len(clusters)+1}",
                 "cluster_name": t.get("title", "独立防务事件")[:16],
                 "main_title": t.get("title", ""),
                 "topic_count": 1,
                 "category": t.get("category", "综合热点"),
+                "badge": s_badge,
+                "badge_class": s_badge_class,
+                "hot_score": s_score,
                 "sources": [t.get("source", "综合快讯")],
                 "latest_time": t.get("pub_time", "刚刚"),
-                "keywords": t.get("keywords", cls.extract_tags(t.get("title", "")))[:3],
+                "keywords": s_tags[:3],
                 "items": [t]
             })
 

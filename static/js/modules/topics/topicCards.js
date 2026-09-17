@@ -140,39 +140,43 @@ export function renderClusters(clusters) {
         const isSingle = (cluster.topic_count || (cluster.items ? cluster.items.length : 1)) <= 1;
         const showSubPreview = !isSingle && cluster.main_title && cluster.main_title !== cluster.cluster_name;
 
+        const badgeText = cluster.badge || (hasOfficial ? '官方' : '国际');
+        const badgeClass = cluster.badge_class || (hasOfficial ? 'badge-domestic' : 'badge-intl');
+        const hotScore = cluster.hot_score || (90 + (cIdx < 3 ? (8 - cIdx * 2) : 0));
+        const displayTitle = cluster.cluster_name || cluster.main_title;
+        const keywordsList = (cluster.keywords && cluster.keywords.length > 0) ? cluster.keywords : ['#战略研判', '#重点要闻'];
+
         html += `
         <div class="cluster-card ${isOpen ? 'open' : ''}" id="clusterCard_${cluster.cluster_id}">
             <div class="cluster-header" onclick="window.app.toggleCluster('${cluster.cluster_id}')">
-                <!-- 顶部元信息栏 (独立一行横向两端对齐，彻底释放标题宽度) -->
-                <div class="cluster-meta-top-row">
-                    <div class="cluster-meta-left">
-                        <span class="cluster-tag ${hasOfficial ? 'official' : ''}">
-                            ${hasOfficial ? '<i data-lucide="shield-check" style="width: 10px; height: 10px;"></i>' : ''}
-                            <span>${displayCat}</span>
-                        </span>
-                        <span class="cluster-time-pill">
-                            <i data-lucide="clock-3" style="width: 10px; height: 10px;"></i>
-                            <span>${cluster.latest_time || '今日最新'}</span>
-                        </span>
+                <!-- 1. 顶部主标题栏 (左侧分类方形色块徽章 + 主标题，对标截图) -->
+                <div class="card-headline-row">
+                    <span class="category-square-badge ${badgeClass}">${badgeText}</span>
+                    <h3 class="cluster-heading">${displayTitle}</h3>
+                </div>
+                ${showSubPreview ? `<p class="cluster-sub-preview">${cluster.main_title}</p>` : ''}
+
+                <!-- 2. 中间：发布时间 + 篇数 + 右侧金黄色 "热 98" 评级 -->
+                <div class="card-meta-bar">
+                    <div class="card-time-text">
+                        <span>${cluster.latest_time || '今日最新'}</span>
+                        ${cluster.topic_count > 1 ? `<span class="card-layers-tag">· ${cluster.topic_count} 篇交叉印证</span>` : ''}
                     </div>
-                    <div class="cluster-meta-right">
-                        <span class="cluster-count-badge">
-                            <i data-lucide="layers-2" style="width: 11px; height: 11px;"></i>
-                            <span>${cluster.topic_count} 篇</span>
-                        </span>
+                    <div class="card-hot-rating">
+                        <span class="hot-label">热</span>
+                        <span class="hot-value">${hotScore}</span>
                         <i data-lucide="chevron-down" class="cluster-arrow-icon"></i>
                     </div>
                 </div>
 
-                <!-- 主事件大标题 (独占整行宽度，自然舒展，绝不挤成两三字窄柱) -->
-                <div class="cluster-main-title-block">
-                    <h3 class="cluster-heading">${cluster.cluster_name}</h3>
-                    ${showSubPreview ? `<p class="cluster-sub-preview">${cluster.main_title}</p>` : ''}
-                    ${(cluster.keywords && cluster.keywords.length > 0) ? `
-                        <div class="cluster-keywords-row">
-                            ${cluster.keywords.map(kw => `<span class="kw-tag">${kw}</span>`).join("")}
-                        </div>
-                    ` : ""}
+                <!-- 3. 横贯全宽的能量热度进度条 (橙红渐变，对标截图) -->
+                <div class="card-hot-track">
+                    <div class="card-hot-fill" style="width: ${hotScore}%;"></div>
+                </div>
+
+                <!-- 4. 底部多标签药丸栏 (#先进制造 #政策定调 #新质生产力，对标截图) -->
+                <div class="cluster-keywords-row">
+                    ${keywordsList.map(kw => `<span class="kw-tag">${kw}</span>`).join("")}
                 </div>
             </div>
             <div class="cluster-body" id="clusterBody_${cluster.cluster_id}">

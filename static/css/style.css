@@ -2180,3 +2180,145 @@ body {
     color: #94a3b8;
     background: rgba(148, 163, 184, 0.1);
 }
+
+/* ==========================================================================
+   参考热搜标准卡片设计规范 (对齐截图：彩色方块徽章、热度分、热度光条、多标签)
+   ========================================================================== */
+.card-headline-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.category-square-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 5px;
+    color: #ffffff;
+    flex-shrink: 0;
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+}
+
+.category-square-badge.badge-domestic {
+    background: #0d9488; /* 国内：青绿 */
+}
+
+.category-square-badge.badge-tech {
+    background: #0284c7; /* 科技：亮蓝 */
+}
+
+.category-square-badge.badge-military {
+    background: #16a34a; /* 军事：翡翠绿 */
+}
+
+.category-square-badge.badge-intl {
+    background: #7c3aed; /* 国际：紫罗兰 */
+}
+
+.card-meta-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+    margin-bottom: 4px;
+}
+
+.card-time-text {
+    font-size: 11.5px;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.card-layers-tag {
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.card-hot-rating {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.hot-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #f97316;
+}
+
+.hot-value {
+    font-size: 14px;
+    font-weight: 800;
+    color: #fbbf24;
+    font-family: ui-monospace, Menlo, monospace;
+    letter-spacing: 0.5px;
+}
+
+/* 贯穿全宽的热度能量指示条 */
+.card-hot-track {
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 5px 0 8px 0;
+}
+
+[data-theme="light"] .card-hot-track {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.card-hot-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f97316 0%, #ef4444 80%, #dc2626 100%);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+/* 多标签药丸栏：完全对齐用户参考截图样式 */
+.cluster-keywords-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px;
+    margin-top: 4px;
+}
+
+.kw-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #38bdf8;
+    background: rgba(14, 165, 233, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    border-radius: 12px;
+    letter-spacing: 0.2px;
+    transition: all 0.15s ease;
+}
+
+[data-theme="dark"] .kw-tag {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.25);
+}
+
+[data-theme="light"] .kw-tag {
+    color: #0369a1;
+    background: rgba(14, 165, 233, 0.08);
+    border-color: rgba(14, 165, 233, 0.25);
+}
+
+.kw-tag:hover {
+    background: rgba(14, 165, 233, 0.22);
+    border-color: rgba(56, 189, 248, 0.45);
+}
