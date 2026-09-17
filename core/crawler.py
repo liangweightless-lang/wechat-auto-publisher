@@ -411,7 +411,7 @@ class DefenseCrawler:
                         items.append({
                             "title": title_raw,
                             "url": link,
-                            "source": "🌐 联合国新闻·英文",
+                            "source": "联合国新闻·英文",
                             "is_overseas": True,
                             "is_official": True,
                             "pub_time": time_tag,
@@ -462,11 +462,11 @@ class DefenseCrawler:
                         items.append({
                             "title": title_raw,
                             "url": link,
-                            "source": "🇷🇺 塔斯社·官方英文",
+                            "source": "塔斯社·官方英文",
                             "is_overseas": True,
                             "is_official": True,
                             "pub_time": time_tag,
-                            "hot": "权威官方",
+                            "hot": "官方认证",
                             "category": cat,
                             "summary": desc[:200] if desc else f"塔斯社国家通讯社前沿专线，时间：{time_tag}。"
                         })
@@ -503,7 +503,7 @@ class DefenseCrawler:
                     items.append({
                         "title": title_raw,
                         "url": link,
-                        "source": "🌐 联合国新闻·中文",
+                        "source": "联合国新闻·中文",
                         "is_overseas": True,
                         "is_official": True,
                         "pub_time": time_tag,
@@ -715,7 +715,7 @@ class DefenseCrawler:
                         official_items.append({
                             "title": t,
                             "url": f"https://www.toutiao.com/group/{item.get('group_id')}/" if item.get('group_id') else "",
-                            "source": "🏛️ 外交部发言人表态" if "外交部" in t else "🛡️ 国防部官方通报",
+                            "source": "中国外交部官方表态" if "外交部" in t else "🛡️ 国防部官方通报",
                             "is_overseas": False,
                             "is_official": True,
                             "pub_time": f'{today_str} 10:24 (官方通报)',
@@ -733,7 +733,7 @@ class DefenseCrawler:
                     {
                         "title": "外交部发言人就红海局势升级答记者问：呼吁各方保持克制，维护国际航道安全与中东和平稳定",
                         "url": "https://www.mfa.gov.cn/web/fyrbt_673021/jzhsl_673025/",
-                        "source": "🏛️ 外交部发言人答问",
+                        "source": "中国外交部发言人答问",
                         "is_overseas": False,
                         "is_official": True,
                         "pub_time": f'{today_str} 09:30 (今日发布)',
@@ -744,7 +744,7 @@ class DefenseCrawler:
                     {
                         "title": "联合国安理会发表主席声明：谴责对红海商船袭击，重申尊重也门主权与航行自由",
                         "url": "https://news.un.org/zh/story/2026/09/security-council-red-sea",
-                        "source": "🌐 联合国安理会公报",
+                        "source": "联合国安理会公报",
                         "is_overseas": True,
                         "is_official": True,
                         "pub_time": f'{today_str} 08:45 (安理会公报)',
@@ -758,7 +758,7 @@ class DefenseCrawler:
                     {
                         "title": "外交部就乌克兰危机四周年表态：支持适时召开俄乌双方认可、各方平等参与的真正和会",
                         "url": "https://www.mfa.gov.cn/web/fyrbt_673021/jzhsl_673025/",
-                        "source": "🏛️ 外交部例行答问",
+                        "source": "中国外交部例行答问",
                         "is_overseas": False,
                         "is_official": True,
                         "pub_time": f'{today_str} 10:15 (例行答问)',
@@ -769,7 +769,7 @@ class DefenseCrawler:
                     {
                         "title": "俄罗斯国防部每日战区作战公报：前线多轴线战果统计与高精度武器打击报告",
                         "url": "https://sputniknews.cn/mil_report/",
-                        "source": "🛡️ 俄罗斯国防部公报",
+                        "source": "俄罗斯国防部公报",
                         "is_overseas": True,
                         "is_official": True,
                         "pub_time": f'{today_str} 07:30 (战区公报)',
@@ -783,7 +783,7 @@ class DefenseCrawler:
                     {
                         "title": "外交部：对中东地区冲突外溢深感担忧，反对侵犯别国主权和领土完整",
                         "url": "https://www.mfa.gov.cn/web/fyrbt_673021/jzhsl_673025/",
-                        "source": "🏛️ 外交部发言人表态",
+                        "source": "中国外交部官方表态",
                         "is_overseas": False,
                         "is_official": True,
                         "pub_time": f'{today_str} 09:00 (发言人答问)',
@@ -794,7 +794,7 @@ class DefenseCrawler:
                     {
                         "title": "国际原子能机构 (IAEA) 官方通报：关于伊朗核设施安全监管与最新核查报告",
                         "url": "https://news.un.org/zh/iaea-iran-report",
-                        "source": "🌐 联合国IAEA公报",
+                        "source": "国际原子能机构公报",
                         "is_overseas": True,
                         "is_official": True,
                         "pub_time": f'{today_str} 06:15 (维也纳公报)',
@@ -807,7 +807,7 @@ class DefenseCrawler:
                 official_items.append({
                     "title": f"外交部与国防部新闻发言人就相关地缘战略动向阐明严正立场",
                     "url": "https://www.mfa.gov.cn/",
-                    "source": "🏛️ 国家部委官方发布",
+                    "source": "国家部委官方发布",
                     "is_overseas": False,
                     "is_official": True,
                     "pub_time": f'{today_str} 10:24 (官方通报)',

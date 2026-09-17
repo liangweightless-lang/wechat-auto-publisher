@@ -117,7 +117,7 @@ export async function resetPrompts() {
         const resp = await fetch('/api/prompts/reset', { method: 'POST' });
         const data = await resp.json();
         if (data.code === 200) {
-            showToast('🔄 已恢复出厂标准 Prompt 设定！', 'info');
+            showToast('已恢复出厂标准 Prompt 设定！', 'info');
             loadPromptConfig();
         }
     } catch (e) {

@@ -197,5 +197,5 @@ export function handleGenerationDone(data) {
     if (window.app && window.app.switchMainTab) {
         window.app.switchMainTab('matrix');
     }
-    showToast('🎉 智库深度研报生成完毕！', 'success');
+    showToast('智库深度研报生成完毕！', 'success');
 }

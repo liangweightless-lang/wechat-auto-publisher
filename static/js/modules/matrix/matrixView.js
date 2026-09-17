@@ -37,11 +37,11 @@ export function switchPlatform(platform) {
             if (pubIcon) pubIcon.setAttribute('data-lucide', 'send');
         } else if (platform === 'douyin') {
             pubBtn.style.background = 'linear-gradient(135deg, #1e1e2e, #11111b)';
-            pubText.innerText = '📋 一键复制抖音短视频脚本';
+            pubText.innerText = '一键复制抖音短视频脚本';
             if (pubIcon) pubIcon.setAttribute('data-lucide', 'copy');
         } else if (platform === 'xiaohongshu') {
             pubBtn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
-            pubText.innerText = '📋 一键复制小红书爆款笔记';
+            pubText.innerText = '一键复制小红书爆款笔记';
             if (pubIcon) pubIcon.setAttribute('data-lucide', 'copy');
         }
     }

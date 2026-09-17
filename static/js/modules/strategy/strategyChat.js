@@ -133,7 +133,7 @@ function renderStrategyContent(strategy) {
         const history = strategy.chat_history || [];
         chatBox.innerHTML = history.map(msg => `
             <div class="strategy-msg-item ${msg.role === 'user' ? 'user' : 'assistant'}">
-                <div class="msg-avatar">${msg.role === 'user' ? '👤' : '🛡️'}</div>
+                <div class="msg-avatar ${msg.role === 'user' ? 'user' : 'assistant'}"><i data-lucide="${msg.role === 'user' ? 'user' : 'shield'}" style="width: 13px; height: 13px;"></i></div>
                 <div class="msg-bubble"><div class="msg-text">${escapeStrategyHtml(msg.content)}</div></div>
             </div>
         `).join('');
@@ -155,11 +155,11 @@ export async function sendStrategyTuneMessage() {
     if (chatBox) {
         chatBox.innerHTML += `
             <div class="strategy-msg-item user">
-                <div class="msg-avatar">👤</div>
+                <div class="msg-avatar user"><i data-lucide="user" style="width: 13px; height: 13px;"></i></div>
                 <div class="msg-bubble"><div class="msg-text">${escapeStrategyHtml(msg)}</div></div>
             </div>
             <div class="strategy-msg-item assistant" id="strategyThinkingBubble">
-                <div class="msg-avatar">🛡️</div>
+                <div class="msg-avatar assistant"><i data-lucide="shield" style="width: 13px; height: 13px;"></i></div>
                 <div class="msg-bubble">
                     <div class="msg-text" style="display: flex; align-items: center; gap: 6px; color: var(--text-light);">
                         <i data-lucide="loader-2" class="spin" style="width: 13px; height: 13px;"></i>
@@ -192,7 +192,7 @@ export async function sendStrategyTuneMessage() {
 }
 
 export async function triggerAiRadarRefresh() {
-    showToast('🧠 AI 正在根据今日国际战局推演最新雷达词...', 'info');
+    showToast('AI 正在根据今日国际战局推演最新雷达词...', 'info');
     try {
         const sampleTitles = (state.currentClustersData || []).map(c => c.main_title);
         const res = await strategyApi.refreshRadar(sampleTitles);
@@ -201,7 +201,7 @@ export async function triggerAiRadarRefresh() {
                 state.currentStrategy.active_keywords = res.active_keywords;
                 renderStrategyContent(state.currentStrategy);
             }
-            showToast(`🎯 AI 已成功刷新 ${res.active_keywords.length} 个今日防务雷达词！`, 'success');
+            showToast(`AI 已成功刷新 ${res.active_keywords.length} 个今日防务雷达词！`, 'success');
         }
     } catch (e) {
         showToast('AI 刷新雷达词异常', 'error');
@@ -215,7 +215,7 @@ export async function resetStrategyToDefault() {
         if (res && res.strategy) {
             state.currentStrategy = res.strategy;
             renderStrategyContent(res.strategy);
-            showToast('🔄 已恢复为初始标准智库策略', 'info');
+            showToast('已恢复为初始标准智库策略', 'info');
         }
     } catch (e) {
         showToast('重置策略失败', 'error');

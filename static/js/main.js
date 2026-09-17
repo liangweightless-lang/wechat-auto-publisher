@@ -83,10 +83,10 @@ export function handleMobileFile(input) {
         state.selectedFile = input.files[0];
         const label = document.getElementById('mobileFileLabel');
         if (label) {
-            label.innerText = `📎 ${state.selectedFile.name.substring(0, 10)}...`;
+            const fn = state.selectedFile.name; label.innerText = fn.length > 8 ? fn.substring(0, 8) + '...' : fn;
             label.style.color = 'var(--primary)';
         }
-        showToast(`📄 报告已挂载: ${state.selectedFile.name}`, 'success');
+        showToast(`素材已挂载: ${state.selectedFile.name}`, 'success');
     }
 }
 
@@ -122,7 +122,7 @@ export async function switchThemeQuick(themeKey, btnEl) {
         const res = await publishApi.formatPreview(themeKey);
         if (res && res.code === 200 && res.html) {
             previewBody.innerHTML = res.html;
-            showToast(`🎨 已切换为【${themeKey}】排版风格`, 'success');
+            showToast(`已切换为【${themeKey}】排版风格`, 'success');
         }
     } catch (e) {
         showToast('换肤失败', 'error');
@@ -146,7 +146,7 @@ export async function triggerMobilePublish() {
     try {
         const res = await publishApi.publishToWechat();
         if (res.code === 200) {
-            showToast(`🚀 成功推送到微信公众平台草稿箱！Media ID: ${res.media_id ? res.media_id.substring(0, 10) : '已生成'}`, 'success');
+            showToast(`已成功推送到微信公众平台草稿箱！Media ID: ${res.media_id ? res.media_id.substring(0, 10) : '已就绪'}`, 'success');
         } else {
             showToast(`推送失败: ${res.message || '请检查微信凭据配置'}`, 'error');
         }

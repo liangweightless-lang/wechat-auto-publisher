@@ -187,7 +187,7 @@ async function loadHotTopics(cat = 'all', forceRefresh = false) {
  // 存入前端缓存
             renderClusters(data.clusters);
             if (forceRefresh) {
-                showToast('🔄 已获取全网最新防务情报与官方通报！');
+                showToast('已获取全网最新防务情报与官方通报！');
             }
         } else {
             listEl.innerHTML = `
@@ -635,7 +635,7 @@ function handleGenerationDone(data) {
     if (modal) modal.classList.remove('active');
 
     switchMainTab('matrix');
-    showToast('🎉 研判长文与短视频矩阵资产已全部生成完毕！');
+    showToast('研判长文与短视频矩阵资产已全部生成完毕！');
     refreshIcons();
 }
 
@@ -670,11 +670,11 @@ function switchPlatform(platform) {
         if (pubIcon) pubIcon.setAttribute('data-lucide', 'send');
     } else if (platform === 'douyin') {
         pubBtn.style.background = 'linear-gradient(135deg, #1e1e2e, #11111b)';
-        pubText.innerText = '📋 一键复制抖音短视频脚本';
+        pubText.innerText = '一键复制抖音短视频脚本';
         if (pubIcon) pubIcon.setAttribute('data-lucide', 'copy');
     } else if (platform === 'xiaohongshu') {
         pubBtn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
-        pubText.innerText = '📋 一键复制小红书爆款笔记';
+        pubText.innerText = '一键复制小红书爆款笔记';
         if (pubIcon) pubIcon.setAttribute('data-lucide', 'copy');
     }
     refreshIcons();
@@ -737,7 +737,7 @@ async function switchThemeQuick(themeKey, btnEl) {
             if (previewBox) {
                 previewBox.innerHTML = res.html;
             }
-            showToast('🎉 排版主题已切换为: ' + themeKey);
+            showToast('排版主题已切换为: ' + themeKey);
         } else {
             showToast('换肤失败: ' + res.message, 'error');
         }
@@ -751,7 +751,7 @@ async function triggerRegenerateImage() {
     const styleKey = styleSelect ? styleSelect.value : 'photojournalism';
     const title = currentGeneratedData ? currentGeneratedData.title : (document.getElementById('mobileTopicInput').value.trim() || '前沿战术推演');
 
-    showToast('🎨 AI 正在按新风格重绘配图与封面...');
+    showToast('AI 正在按新风格重绘配图与封面...');
     try {
         const resp = await fetch('/api/generate/image', {
             method: 'POST',
@@ -763,7 +763,7 @@ async function triggerRegenerateImage() {
         });
         const res = await resp.json();
         if (res.code === 200) {
-            showToast('🎉 封面配图已重绘更新！');
+            showToast('封面配图已重绘更新！');
         } else {
             showToast('重绘失败: ' + res.message, 'error');
         }
@@ -950,7 +950,7 @@ async function resetPrompts() {
             const userEl = document.getElementById('cfgUserPromptTemplate');
             if (sysEl) sysEl.value = res.system_prompt || '';
             if (userEl) userEl.value = res.user_prompt_template || '';
-            showToast('🔄 已恢复官方智库预设！');
+            showToast('已恢复官方智库预设！');
         }
     } catch (e) {
         showToast('重置异常: ' + e.message, 'error');
@@ -985,8 +985,8 @@ async function triggerMobilePublish() {
         const resp = await fetch('/api/publish', { method: 'POST' });
         const res = await resp.json();
         if (res.code === 200) {
-            showToast('🎉 成功推送到微信公众平台草稿箱！');
-            alert(`🎉 推送微信公众平台草稿箱成功！\n\n【草稿 Media ID】\n${res.media_id}\n\n请在手机「订阅号助手」App 中审核后一键群发！`);
+            showToast('成功推送到微信公众平台草稿箱！');
+            alert(`推送微信公众平台草稿箱成功！\n\n【草稿 Media ID】\n${res.media_id}\n\n请在手机「订阅号助手」App 中审核后一键群发！`);
         } else {
             showToast('推送失败: ' + res.message, 'error');
             alert('推送草稿箱失败: ' + res.message);
@@ -1030,9 +1030,9 @@ function showSourceNewsModal(event, artId, encodedList) {
         <div style="padding: 10px 0; border-bottom: 1px solid var(--border);">
             <div style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">${i+1}. ${n.title || '未知标题'}</div>
             <div style="font-size: 12px; color: var(--text-muted); display: flex; gap: 8px; flex-wrap: wrap;">
-                <span>📡 ${n.source || '权威媒体'}</span>
-                <span>🕒 ${n.pub_time || '实时'}</span>
-                ${n.url ? '<a href="' + n.url + '" target="_blank" style="color: var(--primary); text-decoration: none;">🔗 原文</a>' : ''}
+                <span>${n.source || '权威媒体'}</span>
+                <span>${n.pub_time || '实时'}</span>
+                ${n.url ? '<a href="' + n.url + '" target="_blank" style="color: var(--primary); text-decoration: none;"> 原文</a>' : ''}
             </div>
         </div>
     `).join('');
@@ -1050,7 +1050,7 @@ function showSourceNewsModal(event, artId, encodedList) {
     modal.innerHTML = `
         <div style="width:100%;max-height:70vh;background:var(--bg-card);border-radius:18px 18px 0 0;overflow:hidden;display:flex;flex-direction:column;">
             <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-                <span style="font-size:15px;font-weight:700;color:var(--text-main);">📰 引用来源报道（${newsList.length} 篇）</span>
+                <span style="font-size:15px;font-weight:700;color:var(--text-main);"> 引用来源报道（${newsList.length} 篇）</span>
                 <button onclick="document.getElementById('sourceNewsModal').remove()" style="border:none;background:none;padding:4px;cursor:pointer;color:var(--text-muted);">
                     <i data-lucide="x" style="width:18px;height:18px;"></i>
                 </button>
@@ -1113,7 +1113,7 @@ async function expandOfficialSources(clusterId, event) {
                     subListEl.innerHTML = renderSubNewsItems(clusterId, cluster.items);
                 }
 
-                showToast(`🎉 已成功搜集并置顶 ${newOfficials.length} 篇外交部/联合国官方通报！`);
+                showToast(`已成功搜集并置顶 ${newOfficials.length} 篇外交部/联合国官方通报！`);
             } else {
                 showToast('该事件暂无更多增量官方通报', 'info');
             }

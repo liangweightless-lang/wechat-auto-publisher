@@ -60,7 +60,7 @@ export async function fetchAndRenderTopics(cat = 'all', forceRefresh = false) {
 
             renderClusters(data.clusters);
             if (forceRefresh) {
-                showToast('🔄 已获取全网最新一手防务情报与官方通报！', 'success');
+                showToast('已获取全网最新一手防务情报与官方通报！', 'success');
             }
         } else {
             if (listEl) {
@@ -91,7 +91,7 @@ export function renderClusters(clusters) {
     let html = '';
     clusters.forEach((cluster, cIdx) => {
         const isOpen = cIdx === 0;
-        const sourcesText = (cluster.sources || []).slice(0, 3).join(' · ');
+        const sourcesText = (cluster.sources || []).map(s => s.replace(/[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF]/g, '').trim()).slice(0, 3).join(' · ');
 
         html += `
         <div class="cluster-card ${isOpen ? 'open' : ''}" id="clusterCard_${cluster.cluster_id}">
@@ -146,7 +146,7 @@ export function renderSubNewsItems(clusterId, items) {
     items.forEach((item, itemIdx) => {
         const key = `${clusterId}_${itemIdx}`;
         const isChecked = state.selectedArticlesMap.has(key);
-        const source = item.source || '官方通报';
+        const source = (item.source || '官方通报').replace(/[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF]/g, '').trim();
         const pubTime = item.pub_time || '刚刚';
         const url = item.url || '';
         const isOfficial = !!item.is_official;
@@ -206,7 +206,7 @@ export async function expandOfficialSources(clusterId, event) {
             cluster.topic_count = cluster.items.length;
             subList.innerHTML = renderSubNewsItems(cluster.cluster_id, cluster.items);
             btn.innerHTML = `<i data-lucide="check" style="width: 13px; height: 13px; color: #10b981;"></i> <span>已聚合 ${data.items.length} 篇权威官方立场公告</span>`;
-            showToast(`🏛️ 成功补充 ${data.items.length} 条官方外交部/国防部权威报道！`, 'success');
+            showToast(`成功补充 ${data.items.length} 条官方外交部/国防部权威报道！`, 'success');
         } else {
             btn.innerHTML = `<i data-lucide="info" style="width: 13px; height: 13px;"></i> <span>暂无更多最新官方答问</span>`;
         }

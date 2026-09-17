@@ -128,7 +128,7 @@ export async function loadHistoryArticleDetail(id) {
 
             closeHistoryDrawer();
             window.app.switchMainTab('matrix');
-            showToast('📖 已调出历史研报全文！', 'success');
+            showToast('已调出历史研报全文！', 'success');
         }
     } catch (e) {
         showToast('调阅详情异常', 'error');
@@ -178,7 +178,7 @@ export function showSourceNewsModal(event, artId, encodedList) {
                 <div class="source-item-card">
                     <div class="source-item-top">
                         <span class="source-badge ${isOfficial ? 'official' : ''}">
-                            ${isOfficial ? '🏛️ 官方权威' : '🌐 一手报道'}
+                            ${isOfficial ? '<i data-lucide="shield-check" style="width: 10px; height: 10px;"></i>官方权威' : '<i data-lucide="radio" style="width: 10px; height: 10px;"></i>一手报道'}
                         </span>
                         <span class="source-name-pill">${item.source || '公开战报'}</span>
                         <span class="source-time-pill">${item.pub_time || ''}</span>
