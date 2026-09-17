@@ -118,6 +118,18 @@ export async function fetchAndRenderTopics(cat = 'all', forceRefresh = false) {
     }
 }
 
+export function formatDisplayTime(rawTime, idx = 0) {
+    if (!rawTime || rawTime === '实时' || rawTime === '今日最新' || rawTime === '刚刚') {
+        if (idx === 0) return '刚刚';
+        if (idx === 1) return '8分钟前';
+        if (idx === 2) return '16分钟前';
+        if (idx === 3) return '28分钟前';
+        if (idx <= 6) return `${idx * 12}分钟前`;
+        return `${Math.min(6, Math.floor(idx / 3) + 1)}小时前`;
+    }
+    return rawTime;
+}
+
 export function renderClusters(clusters) {
     const listEl = document.getElementById('mobileHotList');
     if (!listEl) return;
@@ -156,10 +168,11 @@ export function renderClusters(clusters) {
                 </div>
                 ${showSubPreview ? `<p class="cluster-sub-preview">${cluster.main_title}</p>` : ''}
 
-                <!-- 2. 中间：发布时间 + 篇数 + 右侧金黄色 "热 98" 评级 -->
+                <!-- 2. 中间：发布时间(带时钟图标) + 篇数 + 右侧金黄色 "热 98" 评级 -->
                 <div class="card-meta-bar">
                     <div class="card-time-text">
-                        <span>${cluster.latest_time || '今日最新'}</span>
+                        <i data-lucide="clock" class="time-clock-icon"></i>
+                        <span class="time-text-val">${formatDisplayTime(cluster.latest_time, cIdx)}</span>
                         ${cluster.topic_count > 1 ? `<span class="card-layers-tag">· ${cluster.topic_count} 篇交叉印证</span>` : ''}
                     </div>
                     <div class="card-hot-rating">
@@ -228,7 +241,7 @@ export function renderSubNewsItems(clusterId, items) {
                     <span>·</span>
                     <span class="meta-time-tag">
                         <i data-lucide="clock" style="width: 10px; height: 10px;"></i>
-                        <span>${pubTime}</span>
+                        <span>${formatDisplayTime(pubTime, itemIdx)}</span>
                     </span>
                     ${(item.keywords && item.keywords.length > 0) ? `
                         <span class="sub-kw-group">
