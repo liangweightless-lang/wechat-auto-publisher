@@ -135,7 +135,12 @@ class AIWriter:
         try:
             resp = requests.post(url, headers=headers, json=payload, stream=True, timeout=180)
             if resp.status_code != 200:
-                err_msg = f"AI 推理集群响应异常: HTTP {resp.status_code} - {resp.text}"
+                if resp.status_code == 402 or "insufficient" in resp.text.lower():
+                    err_msg = "⚠️ 硅基流动(SiliconFlow) AI推理账户余额已耗尽 (HTTP 402)。请前往控制台 (cloud.siliconflow.cn) 充值，或在 .env 中更换有额度的 LLM_API_KEY 后重试。"
+                elif resp.status_code == 401:
+                    err_msg = "⚠️ AI 推理密钥无效或已过期 (HTTP 401 Unauthorized)。请检查 .env 文件中的 LLM_API_KEY 配置。"
+                else:
+                    err_msg = f"AI 推理集群响应异常: HTTP {resp.status_code} - {resp.text}"
                 logger.error(err_msg)
                 yield {"type": "error", "data": err_msg}
                 return
