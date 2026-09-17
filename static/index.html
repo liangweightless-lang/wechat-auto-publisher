@@ -321,70 +321,6 @@
         </button>
     </nav>
 
-    <!-- ======================= 底部滑起面板 1: SQLite 历史智库文库 (Bottom Sheet) ======================= -->
-    <div class="sheet-backdrop" id="historySheetBackdrop" onclick="closeBottomSheet('historySheet')"></div>
-    <div class="mobile-bottom-sheet" id="historySheet">
-        <div class="sheet-handle-bar" onclick="closeBottomSheet('historySheet')"></div>
-        <div class="sheet-header">
-            <div class="sheet-title-wrap">
-                <i data-lucide="database" style="width: 18px; height: 18px; color: var(--primary);"></i>
-                <span class="sheet-title">SQLite 历史智库文库</span>
-            </div>
-            <button class="sheet-close-icon" onclick="closeBottomSheet('historySheet')">
-                <i data-lucide="x" style="width: 16px; height: 16px;"></i>
-            </button>
-        </div>
-        <div class="sheet-subtitle">已沉淀的历史推文与全矩阵资产（轻点任意篇章即可一键恢复调阅）</div>
-        <div class="sheet-scroll-body" id="historyListContainer">
-            <div class="sheet-loading-state">
-                <i data-lucide="loader-2" class="spin-icon" style="width: 20px; height: 20px;"></i>
-                <span>正在加载 SQLite 历史文库...</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- ======================= 底部滑起面板 2: 智库提示词核心配置 (Bottom Sheet) ======================= -->
-    <div class="sheet-backdrop" id="promptSheetBackdrop" onclick="closeBottomSheet('promptSheet')"></div>
-    <div class="mobile-bottom-sheet" id="promptSheet">
-        <div class="sheet-handle-bar" onclick="closeBottomSheet('promptSheet')"></div>
-        <div class="sheet-header">
-            <div class="sheet-title-wrap">
-                <i data-lucide="sliders-horizontal" style="width: 18px; height: 18px; color: var(--primary);"></i>
-                <span class="sheet-title">智库研判 Prompt 配置</span>
-            </div>
-            <button class="sheet-close-icon" onclick="closeBottomSheet('promptSheet')">
-                <i data-lucide="x" style="width: 16px; height: 16px;"></i>
-            </button>
-        </div>
-        <div class="sheet-subtitle">2026年战时时间坐标锚定与四步研判法则（热更新实时生效）</div>
-        <div class="sheet-scroll-body">
-            <div class="sheet-field-group">
-                <label class="sheet-field-label">
-                    <i data-lucide="shield" style="width: 14px; height: 14px; color: var(--primary);"></i>
-                    <span>核心系统设定 (System Prompt)</span>
-                </label>
-                <textarea class="sheet-textarea" id="cfgSystemPrompt" rows="6"></textarea>
-            </div>
-            <div class="sheet-field-group">
-                <label class="sheet-field-label">
-                    <i data-lucide="file-code" style="width: 14px; height: 14px; color: var(--primary);"></i>
-                    <span>用户研判指令模板 (User Template)</span>
-                </label>
-                <textarea class="sheet-textarea" id="cfgUserPromptTemplate" rows="7"></textarea>
-            </div>
-            <div class="sheet-btn-row">
-                <button class="sheet-btn-secondary" onclick="resetPrompts()">
-                    <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
-                    <span>恢复默认</span>
-                </button>
-                <button class="sheet-btn-primary" onclick="savePrompts()">
-                    <i data-lucide="save" style="width: 14px; height: 14px;"></i>
-                    <span>保存配置</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- ======================= 现代化流式思考推演弹层 ======================= -->
     <div class="stepper-mask" id="progressModal">
         <div class="stepper-box">
@@ -439,60 +375,10 @@
         </div>
     </div>
 
-    <!-- 智库 AI 策略总监调优对话抽屉 (Strategy Bottom Sheet) -->
-    <div class="sheet-backdrop" id="strategySheetBackdrop" onclick="closeBottomSheet('strategySheet')"></div>
-    <div class="mobile-bottom-sheet" id="strategySheet">
-        <div class="sheet-handle-bar" onclick="closeBottomSheet('strategySheet')"></div>
-        <div class="sheet-header">
-            <div class="sheet-title" style="display: flex; align-items: center; gap: 8px;">
-                <div style="background: rgba(37, 99, 235, 0.12); color: var(--primary); width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-                    <i data-lucide="bot" style="width: 17px; height: 17px;"></i>
-                </div>
-                <div>
-                    <div style="font-weight: 700; font-size: 15px;">AI 智库策略总监</div>
-                    <div style="font-size: 11px; color: var(--text-light); font-weight: normal;">像与豆包/GPT 对话一样实时优化抓取与文章风格</div>
-                </div>
-            </div>
-            <button class="sheet-close-btn" onclick="closeBottomSheet('strategySheet')">
-                <i data-lucide="x" style="width: 18px; height: 18px;"></i>
-            </button>
-        </div>
-        <div class="sheet-body" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; height: calc(85vh - 70px);">
-            <!-- 今日雷达胶囊区 -->
-            <div class="strategy-radar-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                    <span style="font-size: 12px; font-weight: 600; color: var(--primary); display: inline-flex; align-items: center; gap: 4px;">
-                        <i data-lucide="crosshair" style="width: 13px; height: 13px;"></i> 今日动态抓取雷达词
-                    </span>
-                    <button class="select-all-btn" onclick="triggerAiRadarRefresh()" style="font-size: 11px; padding: 2px 8px;">
-                        <i data-lucide="sparkles" style="width: 11px; height: 11px;"></i> AI 自动推演
-                    </button>
-                </div>
-                <div id="strategyActiveKeywords" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
-                <div id="strategySummaryDesc" style="font-size: 11.5px; color: var(--text-light); margin-top: 8px; line-height: 1.4;"></div>
-            </div>
-
-            <!-- 对话消息区 -->
-            <div id="strategyChatMessages" class="strategy-chat-container" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;"></div>
-
-            <!-- 底部输入框 -->
-            <div class="strategy-input-bar" style="display: flex; gap: 8px; align-items: center; padding-top: 8px; border-top: 1px solid var(--border);">
-                <input type="text" id="strategyChatInput" placeholder="输入调优指令 (如: 今天重点关注红海反导, 标题要有紧迫感)" style="flex: 1; height: 38px; border-radius: 8px; border: 1px solid var(--border); padding: 0 12px; font-size: 13px; background: var(--bg-card); color: var(--text);" />
-                <button class="primary-btn" onclick="sendStrategyTuneMessage()" style="height: 38px; padding: 0 14px; border-radius: 8px; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; background: var(--primary); color: white; border: none; cursor: pointer;">
-                    <i data-lucide="send" style="width: 13px; height: 13px;"></i>
-                    <span>发送</span>
-                </button>
-                <button class="reset-btn" onclick="resetStrategyToDefault()" title="恢复默认策略" style="height: 38px; width: 38px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-light); display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                    <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- 轻量级手机 Toast 提示条 -->
     <div class="toast-bar" id="mobileToast">提示信息</div>
 
-    <script type="module" src="/static/js/main.js?v=7.0"></script>
+    <script type="module" src="/static/js/main.js?v=8.0"></script>
     <script>
         if (window.lucide) {
             lucide.createIcons();

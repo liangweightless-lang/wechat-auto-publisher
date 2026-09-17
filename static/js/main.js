@@ -2,14 +2,36 @@
 import { state } from './store/state.js';
 import { refreshIcons } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
-import { initTheme, toggleTheme, openBottomSheet, closeBottomSheet, closeAllSheets } from './modules/theme/themeManager.js';
+import { initTheme, toggleTheme } from './modules/theme/themeManager.js';
 import { fetchAndRenderTopics, toggleCluster, expandOfficialSources } from './modules/topics/topicCards.js';
 import { toggleSelectNews, selectAllInCluster, selectTopic, updateSelectedUI } from './modules/topics/topicSelector.js';
 import { triggerMobileGenerate, toggleThinking } from './modules/generator/streamHandler.js';
 import { switchPlatform, copyActiveContent } from './modules/matrix/matrixView.js';
-import { loadHistoryArticles, loadHistoryArticleDetail, showSourceNewsModal } from './modules/history/historyView.js';
-import { loadStrategyData, sendStrategyTuneMessage, triggerAiRadarRefresh, resetStrategyToDefault } from './modules/strategy/strategyChat.js';
+import { openHistoryDrawer, closeHistoryDrawer, loadHistoryArticles, loadHistoryArticleDetail, showSourceNewsModal } from './modules/history/historyView.js';
+import { openStrategyDrawer, closeStrategyDrawer, loadStrategyData, sendStrategyTuneMessage, triggerAiRadarRefresh, resetStrategyToDefault } from './modules/strategy/strategyChat.js';
+import { openPromptDrawer, closePromptDrawer, loadPromptConfig, savePrompts, resetPrompts } from './modules/prompt/promptConfig.js';
 import { publishApi } from './api/publishApi.js';
+
+// 统一抽屉路由分配 (Decoupled Drawer Router)
+export function openBottomSheet(sheetId) {
+    if (sheetId === 'strategySheet') {
+        openStrategyDrawer();
+    } else if (sheetId === 'historySheet') {
+        openHistoryDrawer();
+    } else if (sheetId === 'promptSheet') {
+        openPromptDrawer();
+    }
+}
+
+export function closeBottomSheet(sheetId) {
+    if (sheetId === 'strategySheet') {
+        closeStrategyDrawer();
+    } else if (sheetId === 'historySheet') {
+        closeHistoryDrawer();
+    } else if (sheetId === 'promptSheet') {
+        closePromptDrawer();
+    }
+}
 
 // 页面主 Tab 切换 (发现选题 / 矩阵排版)
 export function switchMainTab(tabName) {
@@ -125,8 +147,16 @@ export async function triggerMobilePublish() {
     }
 }
 
-// 全局命名空间挂载
+// 全局命名空间挂载，确保原生 HTML 属性无缝调用
 window.app = {
+    openBottomSheet,
+    closeBottomSheet,
+    openStrategyDrawer,
+    closeStrategyDrawer,
+    openHistoryDrawer,
+    closeHistoryDrawer,
+    openPromptDrawer,
+    closePromptDrawer,
     switchMainTab,
     selectCategory,
     refreshCurrentFeed,
@@ -143,20 +173,19 @@ window.app = {
     copyActiveContent,
     triggerMobilePublish,
     switchThemeQuick,
-    openBottomSheet,
-    closeBottomSheet,
-    closeAllSheets,
     loadHistoryArticles,
     loadHistoryArticleDetail,
     showSourceNewsModal,
     sendStrategyTuneMessage,
     triggerAiRadarRefresh,
     resetStrategyToDefault,
+    loadPromptConfig,
+    savePrompts,
+    resetPrompts,
     toggleTheme,
     refreshIcons
 };
 
-// 全局暴露，确保原生 HTML 属性无缝调用
 Object.assign(window, window.app);
 
 // 页面加载生命周期
@@ -164,16 +193,4 @@ document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     refreshIcons();
     fetchAndRenderTopics('all', false);
-    loadStrategyData();
-
-    // 绑定策略输入框回车发送
-    const strategyInput = document.getElementById('strategyChatInput');
-    if (strategyInput) {
-        strategyInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendStrategyTuneMessage();
-            }
-        });
-    }
 });

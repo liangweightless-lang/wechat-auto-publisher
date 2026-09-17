@@ -1,6 +1,42 @@
+// SQLite 历史智库文库自闭环组件 (Self-contained History View Component)
 import { historyApi } from '../../api/historyApi.js';
 import { refreshIcons } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
+import { BottomSheet } from '../../components/BottomSheet.js';
+
+let historyDrawer = null;
+
+export function initHistoryDrawer() {
+    if (historyDrawer) return historyDrawer;
+
+    historyDrawer = new BottomSheet({
+        id: 'historySheet',
+        title: 'SQLite 历史智库文库',
+        subtitle: '已沉淀的历史推文与全矩阵资产（轻点任意篇章即可一键恢复调阅）',
+        icon: 'database',
+        maxHeight: '85vh',
+        renderBody: () => `
+            <div id="historyListContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                <div class="sheet-loading-state">
+                    <i data-lucide="loader-2" class="spin-icon" style="width: 20px; height: 20px;"></i>
+                    <span>正在读取 SQLite 历史文库...</span>
+                </div>
+            </div>
+        `,
+        onOpen: loadHistoryArticles
+    });
+
+    return historyDrawer;
+}
+
+export function openHistoryDrawer() {
+    const drawer = initHistoryDrawer();
+    drawer.open();
+}
+
+export function closeHistoryDrawer() {
+    if (historyDrawer) historyDrawer.close();
+}
 
 export async function loadHistoryArticles() {
     const container = document.getElementById('historyListContainer');
@@ -90,7 +126,7 @@ export async function loadHistoryArticleDetail(id) {
             const xhsEl = document.getElementById('xiaohongshuNoteText');
             if (xhsEl) xhsEl.value = art.xiaohongshu_note || '暂无小红书图文笔记';
 
-            window.app.closeBottomSheet('historySheet');
+            closeHistoryDrawer();
             window.app.switchMainTab('matrix');
             showToast('📖 已调出历史研报全文！', 'success');
         }
@@ -121,7 +157,7 @@ export function showSourceNewsModal(event, artId, encodedList) {
                     <span>历史智库研报 · 事实信源追溯</span>
                 </div>
                 <button class="source-modal-close" onclick="document.getElementById('sourceNewsModal').classList.remove('active')">
-                    <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+                    <i data-lucide="x" style="width: 16px; height: 16px;"></i>
                 </button>
             </div>
             <div class="source-modal-body" id="sourceNewsModalBody"></div>
