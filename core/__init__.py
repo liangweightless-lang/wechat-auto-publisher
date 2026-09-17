@@ -21,3 +21,5 @@ __all__ = [
 ]
 
 from .prompt_manager import PromptManager
+
+from .matrix_adapter import MatrixAdapter

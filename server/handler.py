@@ -1,11 +1,13 @@
-from typing import Any, Dict, Optional
 # -*- coding: utf-8 -*-
 """
-局势洞见 · RESTful API 与静态服务路由分发器 (App-Ready Backend)
-设计原则：
-1. 模块化解耦：纯 JSON REST API，可直接供 Web 端、原生 App 或微信小程序无缝调用；
-2. 静态资源托管：映射 /static/* 静态资源目录；
-3. 业务下沉：所有 AI 写作、爬虫、微信 API 与排版均下沉至 core 模块。
+Web 控制台请求处理核心模块
+职责：
+1. 托管控制台前端静态资源；
+2. 提供热点情报抓取与历史过滤 API；
+3. 处理 SSE 流式深度思考与全文生成长连接；
+4. 提供 4 大排版主题实时预览与多风格 AI 出图 API；
+5. 提供 SQLite 历史文章文库调阅与一键重推 API；
+6. 微信公众号草稿箱真实对接发布。
 """
 
 import os
@@ -15,43 +17,47 @@ import mimetypes
 from pathlib import Path
 from http.server import SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+from typing import Any, Dict
 
-from config.settings import settings, logger
-from core import PromptManager, WeChatClient, ContentParser, AIWriter, WeChatFormatter, CoverGenerator, ImageService, DefenseCrawler
-from notify import Notifier
+from config.settings import logger, BASE_DIR
+from config import settings
+from core.crawler import DefenseCrawler
+from core.content_parser import ContentParser
+from core.ai_writer import AIWriter
+from core.formatter import WeChatFormatter
+from core.cover_generator import CoverGenerator
+from core.image_service import ImageService
+from core.matrix_adapter import MatrixAdapter
+from core.prompt_manager import PromptManager
+from core.db import DatabaseManager
+from core.wechat_api import WeChatClient
+from notify.notifier import Notifier
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "static"
 
-# 临时内存缓存上一次生成的内容
-CURRENT_CACHE = {
+CURRENT_CACHE: Dict[str, Any] = {
+    "article_id": 0,
     "title": "",
     "digest": "",
     "html_content": "",
     "markdown_content": "",
+    "theme": "think_tank",
     "cover_image": "",
-    "thumb_media_id": "",
+    "illustration_prompt": "",
     "word_count": 0,
-    "read_time": 0
+    "read_time": 1,
+    "douyin_script": "",
+    "xiaohongshu_note": ""
 }
 
 
 class AppAPIHandler(SimpleHTTPRequestHandler):
-    """模块化 RESTful API 与静态资源分发器"""
-
-    def _send_json(self, data: dict, code: int = 200):
-        """统一发送 JSON 响应格式"""
-        self.send_response(code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.end_headers()
-        self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+    PublisherHTTPHandler = None
+    """自定义 HTTP 请求处理器"""
 
     def do_OPTIONS(self):
-        """处理 CORS 预检请求（供移动 App 跨域调用）"""
-        self.send_response(204)
+        """处理预检跨域请求"""
+        self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
@@ -61,12 +67,12 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
 
-        # 1. 首页静态页面重定向
+        # 1. 首页静态页面
         if path == "/" or path == "/index.html":
             self._serve_static_file(STATIC_DIR / "index.html")
             return
 
-        # 2. /static/ 静态文件托管
+        # 2. 静态文件托管
         if path.startswith("/static/"):
             rel_path = path[len("/static/"):]
             target_file = STATIC_DIR / rel_path
@@ -76,31 +82,81 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             self.send_error(404, "Static File Not Found")
             return
 
-        # 3. [API] 探测情报与战报列表: GET /api/topics 或 GET /api/crawl
+        # 3. 本地图片/资源临时预览 (/assets/...)
+        if path.startswith("/assets/"):
+            rel_path = path[len("/assets/"):]
+            target_file = BASE_DIR / "assets" / rel_path
+            if target_file.exists() and target_file.is_file():
+                self._serve_static_file(target_file)
+                return
+            self.send_error(404, "Asset Not Found")
+            return
+
+        # 4. [API] 探测情报与战报列表: GET /api/topics 或 GET /api/crawl
         if path in ["/api/topics", "/api/crawl"]:
             query = parse_qs(parsed.query)
             cat = query.get("category", ["all"])[0]
             try:
                 topics = DefenseCrawler.fetch_multi_source_topics(category=cat, limit=20)
+                # 顺便将抓取结果写入 SQLite 资讯去重池
+                DatabaseManager.record_news_items(topics)
                 self._send_json({"code": 200, "topics": topics})
             except Exception as e:
                 logger.error(f"拉取情报异常: {e}")
                 self._send_json({"code": 500, "message": str(e)})
             return
 
-        # 4.1 [API] 获取智库提示词配置: GET /api/prompts
+        # 5. [API] 获取智库提示词配置: GET /api/prompts
         if path == "/api/prompts":
             prompts = PromptManager.get_prompts()
             self._send_json({"code": 200, **prompts})
             return
 
-        # 4. [API] 健康检查: GET /api/health
+        # 6. [API] 获取 SQLite 历史文章列表: GET /api/articles/history
+        if path == "/api/articles/history":
+            query = parse_qs(parsed.query)
+            limit = int(query.get("limit", [20])[0])
+            articles = DatabaseManager.get_recent_articles(limit=limit)
+            self._send_json({"code": 200, "articles": articles})
+            return
+
+        # 7. [API] 获取指定历史文章详情: GET /api/articles/get
+        if path == "/api/articles/get":
+            query = parse_qs(parsed.query)
+            art_id = int(query.get("id", [0])[0])
+            art = DatabaseManager.get_article_by_id(art_id)
+            if art:
+                # 载入到当前内存缓存，便于用户一键重推
+                CURRENT_CACHE["article_id"] = art["id"]
+                CURRENT_CACHE["title"] = art["title"]
+                CURRENT_CACHE["digest"] = art.get("lead", "")
+                CURRENT_CACHE["html_content"] = art.get("wechat_html", "")
+                CURRENT_CACHE["markdown_content"] = art.get("markdown_content", "")
+                CURRENT_CACHE["theme"] = art.get("theme", "think_tank")
+                CURRENT_CACHE["cover_image"] = art.get("cover_image_path", "")
+                CURRENT_CACHE["douyin_script"] = art.get("douyin_script", "")
+                CURRENT_CACHE["xiaohongshu_note"] = art.get("xiaohongshu_note", "")
+                self._send_json({"code": 200, "article": art})
+            else:
+                self._send_json({"code": 404, "message": "未找到指定历史文章"})
+            return
+
+        # 8. [API] 获取所有支持的主题与视觉风格列表: GET /api/themes
+        if path == "/api/themes":
+            self._send_json({
+                "code": 200,
+                "themes": WeChatFormatter.THEMES,
+                "visual_styles": ImageService.VISUAL_STYLES
+            })
+            return
+
+        # 9. [API] 健康检查
         if path == "/api/health":
             self._send_json({
                 "code": 200,
                 "status": "healthy",
                 "service": "wechat-auto-publisher",
-                "version": "2.0.0"
+                "version": "3.0.0-pro"
             })
             return
 
@@ -110,28 +166,38 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
 
-        # 1. [API] 文章与配图生成 (流式思维与实时生成): POST /api/generate/stream
+        # 1. [API] 文章与配图生成 (流式深度思考): POST /api/generate/stream
         if path == "/api/generate/stream":
             self._handle_generate_stream()
             return
 
-        # 1.1 [API] 同步模式: POST /api/generate
+        # 2. [API] 同步模式生成: POST /api/generate
         if path == "/api/generate":
             self._handle_generate()
             return
 
-        # 3. [API] 恢复默认提示词: POST /api/prompts/reset
+        # 3. [API] 实时主题格式化预览: POST /api/format/preview
+        if path == "/api/format/preview":
+            self._handle_format_preview()
+            return
+
+        # 4. [API] 独立视觉配图生成: POST /api/generate/image
+        if path == "/api/generate/image":
+            self._handle_generate_image()
+            return
+
+        # 5. [API] 恢复默认提示词: POST /api/prompts/reset
         if path == "/api/prompts/reset":
             res = PromptManager.reset_prompts()
             self._send_json({"code": 200, "message": "已恢复智库默认提示词", **res})
             return
 
-        # 4. [API] 保存修改后的提示词: POST /api/prompts
+        # 6. [API] 保存修改后的提示词: POST /api/prompts
         if path == "/api/prompts":
             self._handle_save_prompts()
             return
 
-        # 2. [API] 一键推送草稿箱: POST /api/publish
+        # 7. [API] 一键推送草稿箱: POST /api/publish
         if path == "/api/publish":
             self._handle_publish()
             return
@@ -155,8 +221,62 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             logger.error(f"发送静态文件失败 {file_path}: {e}")
             self.send_error(500, "Internal Server Error")
 
+    def _handle_format_preview(self):
+        """实时将 Markdown 格式化为选定主题的微信 HTML"""
+        try:
+            content_len = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_len).decode("utf-8")
+            data = json.loads(body)
+            md_text = data.get("markdown", "") or CURRENT_CACHE.get("markdown_content", "")
+            theme_key = data.get("theme", "think_tank")
+            author = data.get("author", "局势洞见研判组")
+
+            html = WeChatFormatter.format_to_wechat_html(md_text, theme_name=theme_key, author=author)
+            CURRENT_CACHE["html_content"] = html
+            CURRENT_CACHE["theme"] = theme_key
+
+            self._send_json({
+                "code": 200,
+                "html": html,
+                "theme": theme_key
+            })
+        except Exception as e:
+            logger.error(f"格式化预览失败: {e}")
+            self._send_json({"code": 500, "message": str(e)})
+
+    def _handle_generate_image(self):
+        """生成指定风格的配图与杂志封面"""
+        try:
+            content_len = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_len).decode("utf-8")
+            data = json.loads(body)
+            prompt = data.get("prompt", "").strip() or CURRENT_CACHE.get("title", "前沿战术推演")
+            style_key = data.get("style", "photojournalism")
+            category = data.get("category", "国际防务特刊")
+
+            img_path = ImageService.generate_image_by_flux(prompt, style_key=style_key)
+            cover_path = CoverGenerator.crop_to_wechat_ratio(
+                img_path,
+                title=CURRENT_CACHE.get("title", prompt),
+                category=category,
+                style="magazine"
+            )
+
+            CURRENT_CACHE["cover_image"] = cover_path
+            CURRENT_CACHE["illustration_prompt"] = prompt
+
+            self._send_json({
+                "code": 200,
+                "cover_image": cover_path,
+                "prompt": prompt,
+                "style": style_key
+            })
+        except Exception as e:
+            logger.error(f"独立生图失败: {e}")
+            self._send_json({"code": 500, "message": str(e)})
+
     def _handle_generate_stream(self):
-        """处理研判文章与配图的 SSE 流式生成 (包含 DeepSeek-R1 深度思考链与正文流)"""
+        """处理研判文章与配图的 SSE 流式生成"""
         try:
             form = cgi.FieldStorage(
                 fp=self.rfile,
@@ -168,6 +288,8 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             )
 
             topic = form.getvalue("topic", "").strip()
+            theme_choice = form.getvalue("theme", "think_tank").strip()
+            image_style = form.getvalue("image_style", "photojournalism").strip()
             raw_content = ""
 
             if "file" in form and form["file"].filename:
@@ -179,7 +301,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                 with open(saved_path, "wb") as f:
                     f.write(file_item.file.read())
 
-                logger.info(f"接收到流式生成用户上传文件: {saved_path}")
+                logger.info(f"接收到用户上传文件: {saved_path}")
                 if saved_path.suffix.lower() == ".pdf":
                     raw_content = ContentParser.extract_from_pdf(str(saved_path))
                 else:
@@ -192,7 +314,6 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                 self._send_json({"code": 400, "message": "未接收到有效的研判事件或文件内容"})
                 return
 
-            # 设置 SSE 响应头
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream; charset=utf-8")
             self.send_header("Cache-Control", "no-cache, no-transform")
@@ -234,41 +355,78 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             digest = final_article.get("digest", "观察全球防务与地缘博弈。")
             md_content = final_article.get("markdown_content", "")
 
-            send_sse("status", {"message": "长文生成完毕，正在进行全自动军武配图与微信公众号专属内联排版..."})
+            send_sse("status", {"message": f"长文生成完毕，正在根据 [{image_style}] 风格生成视觉配图与封面..."})
 
-            # 配图生成
+            # 配图与多版式封面生成
             try:
-                img_path = ImageService.generate_topic_image(topic=title, article_summary=digest)
-                cover_path = CoverGenerator.crop_to_wechat_ratio(img_path)
+                img_path = ImageService.generate_image_by_flux(prompt=title, style_key=image_style)
+                cover_path = CoverGenerator.crop_to_wechat_ratio(
+                    img_path,
+                    title=title,
+                    category=topic[:12] if topic else "战略研判",
+                    style="magazine"
+                )
             except Exception as e_img:
                 logger.warning(f"配图生成异常，启用保底封面: {e_img}")
-                cover_path = str(BASE_DIR / "assets" / "default_cover.jpg")
+                cover_path = str(BASE_DIR / "assets" / "article_cover.jpg")
 
-            # 微信公众号排版
-            author_name = getattr(settings, "WECHAT_AUTHOR", getattr(settings, "WECHAT_DEFAULT_AUTHOR", "局势洞见"))
-            html_content = WeChatFormatter.format_to_wechat_html(markdown_text=md_content, author=author_name)
+            # 微信公众号主题排版
+            author_name = getattr(settings, "WECHAT_AUTHOR", "局势洞见研判组")
+            html_content = WeChatFormatter.format_to_wechat_html(
+                markdown_text=md_content,
+                theme_name=theme_choice,
+                author=author_name
+            )
 
             clean_text = "".join(md_content.split())
             word_count = len(clean_text)
             read_time = max(1, round(word_count / 380))
 
+            # 矩阵内容变型派生 (抖音与小红书)
+            matrix_res = MatrixAdapter.adapt_all(title=title, digest=digest, markdown_content=md_content)
+            douyin_script = matrix_res["douyin"]
+            xiaohongshu_note = matrix_res["xiaohongshu"]
+
+            # 持久化到 SQLite
+            art_id = DatabaseManager.save_article(
+                title=title,
+                category=topic[:20] if topic else "前沿热点",
+                theme=theme_choice,
+                author=author_name,
+                lead=digest,
+                markdown_content=md_content,
+                wechat_html=html_content,
+                douyin_script=douyin_script,
+                xiaohongshu_note=xiaohongshu_note,
+                cover_image_path=cover_path,
+                illustration_prompt=title
+            )
+
+            CURRENT_CACHE["article_id"] = art_id
             CURRENT_CACHE["title"] = title
             CURRENT_CACHE["digest"] = digest
             CURRENT_CACHE["html_content"] = html_content
             CURRENT_CACHE["markdown_content"] = md_content
+            CURRENT_CACHE["theme"] = theme_choice
             CURRENT_CACHE["cover_image"] = cover_path
             CURRENT_CACHE["word_count"] = word_count
             CURRENT_CACHE["read_time"] = read_time
+            CURRENT_CACHE["douyin_script"] = douyin_script
+            CURRENT_CACHE["xiaohongshu_note"] = xiaohongshu_note
 
             send_sse("done", {
+                "id": art_id,
                 "title": title,
                 "digest": digest,
+                "theme": theme_choice,
                 "html_content": html_content,
                 "markdown_content": md_content,
                 "word_count": word_count,
                 "read_time": read_time,
                 "cover_image": cover_path,
-                "thinking": final_article.get("thinking", "")
+                "thinking": final_article.get("thinking", ""),
+                "douyin_script": douyin_script,
+                "xiaohongshu_note": xiaohongshu_note
             })
 
         except Exception as e:
@@ -281,95 +439,78 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                 pass
 
     def _handle_generate(self):
-        """处理研判文章与配图生成"""
+        """同步生成模式"""
         try:
-            form = cgi.FieldStorage(
-                fp=self.rfile,
-                headers=self.headers,
-                environ={
-                    'REQUEST_METHOD': 'POST',
-                    'CONTENT_TYPE': self.headers['Content-Type'],
-                }
-            )
+            content_len = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_len).decode("utf-8")
+            data = json.loads(body)
+            topic = data.get("topic", "").strip()
+            theme_choice = data.get("theme", "think_tank").strip()
+            image_style = data.get("image_style", "photojournalism").strip()
 
-            topic = form.getvalue("topic", "").strip()
-            raw_content = ""
-
-            # 处理上传的 PDF 或 TXT
-            if "file" in form and form["file"].filename:
-                file_item = form["file"]
-                upload_dir = BASE_DIR / "storage" / "uploads"
-                upload_dir.mkdir(parents=True, exist_ok=True)
-                saved_path = upload_dir / file_item.filename
-
-                with open(saved_path, "wb") as f:
-                    f.write(file_item.file.read())
-
-                logger.info(f"接收到用户上传文件: {saved_path}")
-                if saved_path.suffix.lower() == ".pdf":
-                    raw_content = ContentParser.extract_from_pdf(str(saved_path))
-                else:
-                    raw_content = ContentParser.extract_from_text_file(str(saved_path))
-
-            if not raw_content and topic:
-                raw_content = f"焦点研判事件与指示：{topic}"
-
-            if not raw_content:
-                self._send_json({"code": 400, "message": "未接收到有效的报告内容或研判话题"})
-                return
-
-            # 1. 深度 AI 写作（聚焦来龙去脉与武器国家溯源）
             writer = AIWriter()
-            article_data = writer.generate_article(raw_content=raw_content, user_focus=topic)
+            res = writer.generate_article(raw_content=f"焦点研判事件：{topic}", user_focus=topic)
 
-            title = article_data.get("title", "全球防务观察")
-            digest = article_data.get("digest", "观察全球防务与地缘博弈。")
-            md_content = article_data.get("markdown_content", "")
+            title = res.get("title", "深度防务研判")
+            digest = res.get("digest", "")
+            md_content = res.get("markdown_content", "")
 
-            # 2. 生成配图 (快手可图，带全套保底)
-            try:
-                img_path = ImageService.generate_topic_image(
-                    topic=title,
-                    article_summary=digest
-                )
-                cover_path = CoverGenerator.crop_to_wechat_ratio(img_path)
-            except Exception as e_img:
-                logger.warning(f"配图生成异常，启用保底封面: {e_img}")
-                cover_path = str(BASE_DIR / "assets" / "default_cover.jpg")
+            img_path = ImageService.generate_image_by_flux(prompt=title, style_key=image_style)
+            cover_path = CoverGenerator.crop_to_wechat_ratio(img_path, title=title, category=topic[:12], style="magazine")
 
-            # 3. 微信专属内联样式排版
-            author_name = getattr(settings, "WECHAT_AUTHOR", getattr(settings, "WECHAT_DEFAULT_AUTHOR", "局势洞见"))
-            html_content = WeChatFormatter.format_to_wechat_html(
-                markdown_text=md_content,
-                author=author_name
-            )
+            author_name = getattr(settings, "WECHAT_AUTHOR", "局势洞见研判组")
+            html_content = WeChatFormatter.format_to_wechat_html(md_content, theme_name=theme_choice, author=author_name)
 
-            # 统计字数
             clean_text = "".join(md_content.split())
             word_count = len(clean_text)
             read_time = max(1, round(word_count / 380))
 
-            # 缓存生成结果
+            matrix_res = MatrixAdapter.adapt_all(title=title, digest=digest, markdown_content=md_content)
+            douyin_script = matrix_res["douyin"]
+            xiaohongshu_note = matrix_res["xiaohongshu"]
+
+            art_id = DatabaseManager.save_article(
+                title=title,
+                category=topic[:20] if topic else "前沿热点",
+                theme=theme_choice,
+                author=author_name,
+                lead=digest,
+                markdown_content=md_content,
+                wechat_html=html_content,
+                douyin_script=douyin_script,
+                xiaohongshu_note=xiaohongshu_note,
+                cover_image_path=cover_path,
+                illustration_prompt=title
+            )
+
+            CURRENT_CACHE["article_id"] = art_id
             CURRENT_CACHE["title"] = title
             CURRENT_CACHE["digest"] = digest
             CURRENT_CACHE["html_content"] = html_content
             CURRENT_CACHE["markdown_content"] = md_content
+            CURRENT_CACHE["theme"] = theme_choice
             CURRENT_CACHE["cover_image"] = cover_path
             CURRENT_CACHE["word_count"] = word_count
             CURRENT_CACHE["read_time"] = read_time
+            CURRENT_CACHE["douyin_script"] = douyin_script
+            CURRENT_CACHE["xiaohongshu_note"] = xiaohongshu_note
 
             self._send_json({
                 "code": 200,
+                "id": art_id,
                 "title": title,
                 "digest": digest,
+                "theme": theme_choice,
                 "html_content": html_content,
                 "word_count": word_count,
                 "read_time": read_time,
-                "cover_image": cover_path
+                "cover_image": cover_path,
+                "douyin_script": douyin_script,
+                "xiaohongshu_note": xiaohongshu_note
             })
 
         except Exception as e:
-            logger.error(f"处理生成请求失败: {e}", exc_info=True)
+            logger.error(f"处理同步生成请求失败: {e}", exc_info=True)
             self._send_json({"code": 500, "message": str(e)})
 
     def _handle_save_prompts(self):
@@ -411,7 +552,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             logger.info("正在推送至微信草稿箱...")
             article = {
                 "title": CURRENT_CACHE["title"],
-                "author": settings.WECHAT_AUTHOR,
+                "author": getattr(settings, "WECHAT_AUTHOR", "局势洞见研判组"),
                 "digest": CURRENT_CACHE["digest"],
                 "content": CURRENT_CACHE["html_content"],
                 "thumb_media_id": thumb_media_id,
@@ -420,10 +561,18 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
 
             media_id = wechat_client.add_draft(articles=[article])
 
-            # 3. 记录已处理
+            # 3. 更新 SQLite 中的发布状态
+            if CURRENT_CACHE.get("article_id"):
+                DatabaseManager.update_article_publish_status(
+                    article_id=CURRENT_CACHE["article_id"],
+                    wechat_media_id=media_id,
+                    status="published"
+                )
+
+            # 4. 记录已处理
             DefenseCrawler.save_history(CURRENT_CACHE["title"])
 
-            # 4. 触发通知
+            # 5. 触发通知
             Notifier.send_all(
                 title=f"【局势洞见】草稿推送成功: 《{CURRENT_CACHE['title']}》",
                 content=(
@@ -443,3 +592,15 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
         except Exception as e:
             logger.error(f"推送草稿箱失败: {e}", exc_info=True)
             self._send_json({"code": 500, "message": str(e)})
+
+    def _send_json(self, data: dict, status_code: int = 200):
+        """标准 JSON 响应工具函数"""
+        payload = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(payload)
+
+PublisherHTTPHandler = AppAPIHandler

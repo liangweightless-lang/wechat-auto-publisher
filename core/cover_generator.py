@@ -1,22 +1,30 @@
 # -*- coding: utf-8 -*-
 """
-微信图文封面生成模块
+微信图文高级多版式封面生成模块
 职责：
-1. 优先将 AI 生成的好莱坞电影级战场实景照片，智能裁切为微信官方 2.35:1 (900x383) 黄金大图比例；
-2. 注入电影级暗角与智库微标，打造极具视觉冲击力的大片封面。
+1. 智能裁切为微信官方大图 2.35:1 比例 (940x400)；
+2. 支持 3 种杂志级封面版式（权威特刊版式 / 极简电影大片 / 科技态势战术版）；
+3. 注入电影级暗角调色、精致双语大标头与战术坐标水印。
 """
 
 from pathlib import Path
+from typing import Optional
 from config.settings import logger
 
 
 class CoverGenerator:
-    """文章封面图生成工具"""
+    """文章多版式封面图生成工具"""
 
     @staticmethod
-    def crop_to_wechat_ratio(image_path: str, output_path: str = "assets/article_cover.jpg") -> str:
+    def crop_to_wechat_ratio(
+        image_path: str,
+        title: str = "",
+        category: str = "国际防务特刊",
+        style: str = "magazine",
+        output_path: str = "assets/article_cover.jpg"
+    ) -> str:
         """
-        将任意高分辨率实景照片裁切为微信官方封面最佳比例 2.35:1 (900 x 383)
+        将任意高分辨率实景照片裁切为微信官方封面最佳比例 2.35:1 (940 x 400) 并合成杂志级排版
         """
         img_p = Path(image_path)
         if not img_p.exists():
@@ -32,36 +40,78 @@ class CoverGenerator:
                 im = im.convert("RGB")
                 orig_w, orig_h = im.size
 
-                # 目标微信官方大图比例 2.35:1
+                # 微信官方大图比例 2.35:1
                 target_w, target_h = 940, 400
                 target_ratio = target_w / target_h
                 orig_ratio = orig_w / orig_h
 
                 if orig_ratio > target_ratio:
-                    # 原图太宽，按高度裁剪两边
                     new_w = int(orig_h * target_ratio)
                     left = (orig_w - new_w) // 2
                     im_cropped = im.crop((left, 0, left + new_w, orig_h))
                 else:
-                    # 原图太高，居中偏上裁剪
                     new_h = int(orig_w / target_ratio)
-                    top = max(0, (orig_h - new_h) // 3)  # 居中偏上，保留焦点
+                    top = max(0, (orig_h - new_h) // 3)
                     im_cropped = im.crop((0, top, orig_w, top + new_h))
 
                 im_resized = im_cropped.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
-                # 电影感微调：适度增加对比度，打造冷色调胶片质感
+                # 胶片电影级质感增强
                 enhancer = ImageEnhance.Contrast(im_resized)
-                im_final = enhancer.enhance(1.08)
+                im_final = enhancer.enhance(1.06)
 
-                # 在左上角打上精美极简角标：局势洞见
                 draw = ImageDraw.Draw(im_final)
-                # 绘制半透明黑色渐变遮罩保护顶部文字
-                draw.rectangle([(0, 0), (target_w, 48)], fill=(10, 15, 28))
-                draw.text((24, 14), "【局势洞见】前沿战术与防务深研", fill="#e2e8f0")
+
+                font_large = None
+                font_small = None
+                font_candidates = [
+                    "/System/Library/Fonts/PingFang.ttc",
+                    "/System/Library/Fonts/STHeiti Light.ttc",
+                    "/System/Library/Fonts/Hiragino Sans GB.ttc",
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+                ]
+                for fc in font_candidates:
+                    if Path(fc).exists():
+                        try:
+                            font_large = ImageFont.truetype(fc, 24)
+                            font_small = ImageFont.truetype(fc, 13)
+                            break
+                        except Exception:
+                            pass
+
+                # 根据版式渲染不同的艺术遮罩与版头
+                if style == "magazine":
+                    # 权威智库特刊风：底部渐变暗黑蒙层 + 居中或左侧大标 + 金色/藏青副标
+                    for y in range(target_h - 130, target_h):
+                        alpha = int(210 * ((y - (target_h - 130)) / 130))
+                        draw.line([(0, y), (target_w, y)], fill=(10, 15, 30, alpha))
+
+                    # 顶部品牌条
+                    draw.rectangle([(0, 0), (target_w, 42)], fill=(15, 23, 42))
+                    draw.rectangle([(20, 12), (24, 30)], fill=(234, 88, 12))  # 橙色强调条
+                    draw.text((34, 13), f"局势洞见 · {category} // 2026 战略研判报告", fill="#cbd5e1", font=font_small)
+
+                    # 底部标题呈现
+                    if title:
+                        display_title = title if len(title) <= 28 else title[:28] + "..."
+                        draw.text((24, target_h - 85), display_title, fill="#ffffff", font=font_large)
+                        draw.text((24, target_h - 45), "GLOBAL DEFENSE & GEOPOLITICAL INTELLIGENCE REPORT", fill="#94a3b8", font=font_small)
+
+                elif style == "tactical":
+                    # 战术 HUD 极客风：四角战术准星与科技坐标
+                    draw.rectangle([(0, 0), (target_w, 36)], fill=(5, 10, 20))
+                    draw.text((20, 10), f"TARGET ACQUIRED // {category} // ACTIVE RADAR LOCK", fill="#38bdf8", font=font_small)
+                    # 绘制战术十字
+                    draw.line([(target_w - 60, 20), (target_w - 20, 20)], fill="#38bdf8", width=2)
+                    draw.line([(target_w - 40, 10), (target_w - 40, 30)], fill="#38bdf8", width=2)
+
+                else:
+                    # 极简电影宽幅风
+                    draw.rectangle([(0, 0), (target_w, 38)], fill=(12, 17, 29))
+                    draw.text((24, 11), f"【局势洞见】{category}", fill="#e2e8f0", font=font_small)
 
                 im_final.save(str(out), "JPEG", quality=95)
-                logger.info(f"🎉 微信电影级大片封面裁切完成: {out}")
+                logger.info(f"微信多版式封面生成完成 ({style}): {out}")
                 return str(out)
 
         except Exception as e:
@@ -69,20 +119,23 @@ class CoverGenerator:
             return str(image_path)
 
     @classmethod
-    def generate_default_cover(cls, title: str, source_photo: str = None, output_path: str = "assets/default_cover.jpg") -> str:
-        """
-        确保有一张极具视觉冲击力的电影级大片封面
-        """
-        # 如果有现成的实景大片照片，直接裁切为微信封面
+    def generate_default_cover(
+        cls,
+        title: str,
+        category: str = "国际防务特刊",
+        source_photo: str = None,
+        style: str = "magazine",
+        output_path: str = "assets/article_cover.jpg"
+    ) -> str:
+        """确保有一张极具视觉冲击力的电影级大片封面"""
         if source_photo and Path(source_photo).exists():
-            cover_path = cls.crop_to_wechat_ratio(source_photo, output_path)
+            cover_path = cls.crop_to_wechat_ratio(source_photo, title=title, category=category, style=style, output_path=output_path)
             if cover_path:
                 return cover_path
 
-        # 尝试检查之前生成的战场照片
         fallback_photo = Path("assets/flux_illustration.jpg")
         if fallback_photo.exists():
-            cover_path = cls.crop_to_wechat_ratio(str(fallback_photo), output_path)
+            cover_path = cls.crop_to_wechat_ratio(str(fallback_photo), title=title, category=category, style=style, output_path=output_path)
             if cover_path:
                 return cover_path
 
