@@ -402,6 +402,39 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                 self._send_json({"code": 500, "message": str(e)})
             return
 
+        # 0.04 [API] 手动增删/管理雷达关键词: POST /api/strategy/keywords
+        if path == "/api/strategy/keywords":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len).decode("utf-8")
+                data = json.loads(body)
+                action = data.get("action", "set")
+                strategy = StrategyManager.load_strategy()
+                current_kws = list(strategy.get("active_keywords", []))
+
+                if action == "add":
+                    new_kw = data.get("keyword", "").strip()
+                    if new_kw and new_kw not in current_kws:
+                        current_kws.append(new_kw)
+                elif action == "remove":
+                    rm_kw = data.get("keyword", "").strip()
+                    if rm_kw in current_kws:
+                        current_kws.remove(rm_kw)
+                elif action == "set":
+                    kws = data.get("keywords", [])
+                    if isinstance(kws, list):
+                        current_kws = [k.strip() for k in kws if k.strip()]
+
+                strategy["active_keywords"] = current_kws
+                strategy["last_updated"] = time.strftime("%Y-%m-%d %H:%M")
+                StrategyManager.save_strategy(strategy)
+                logger.info(f"手动更新雷达关键词 [{action}]: 当前共 {len(current_kws)} 个")
+                self._send_json({"code": 200, "message": "雷达关键词更新成功", "active_keywords": current_kws, "strategy": strategy})
+            except Exception as e:
+                logger.error(f"更新雷达关键词异常: {e}")
+                self._send_json({"code": 500, "message": str(e)})
+            return
+
         # 0.1 [API] 按需搜集政府与外交部官方公告: POST /api/topics/expand_sources
         if path == "/api/topics/expand_sources":
             try:

@@ -8,7 +8,7 @@ import { toggleSelectNews, selectAllInCluster, selectTopic, updateSelectedUI, sh
 import { triggerMobileGenerate, toggleThinking, closeProgressModal } from './modules/generator/streamHandler.js';
 import { switchPlatform, copyActiveContent, openExternalChannel } from './modules/matrix/matrixView.js';
 import { openHistoryDrawer, closeHistoryDrawer, loadHistoryArticles, loadHistoryArticleDetail, showSourceNewsModal } from './modules/history/historyView.js';
-import { openStrategyDrawer, closeStrategyDrawer, loadStrategyData, sendStrategyTuneMessage, triggerAiRadarRefresh, resetStrategyToDefault, syncTodayRadarToHome } from './modules/strategy/strategyChat.js';
+import { openStrategyDrawer, closeStrategyDrawer, loadStrategyData, sendStrategyTuneMessage, triggerAiRadarRefresh, resetStrategyToDefault, syncTodayRadarToHome, addManualKeyword, removeManualKeyword } from './modules/strategy/strategyChat.js';
 import { openPromptDrawer, closePromptDrawer, loadPromptConfig, savePrompts, resetPrompts } from './modules/prompt/promptConfig.js';
 import { openModelSettingsDrawer, closeModelSettingsDrawer, applyModelPreset, toggleKeyVisibility, testModelConnection, saveModelConfig, loadCurrentModelConfig } from './modules/settings/modelSettings.js';
 import { initAuth, showLoginModal, hideLoginModal, toggleAuthPwdVisibility, handleLoginSubmit, toggleUserDropdownMenu, triggerLogout, openChangePwdModal } from './modules/auth/authModal.js';
@@ -259,6 +259,8 @@ window.app = {
     showSourceNewsModal,
     sendStrategyTuneMessage,
     triggerAiRadarRefresh,
+    addManualKeyword,
+    removeManualKeyword,
     resetStrategyToDefault,
     loadPromptConfig,
     savePrompts,

@@ -25,5 +25,13 @@ export const strategyApi = {
             method: 'POST',
             body: JSON.stringify({ titles: sampleTitles })
         });
+    },
+
+    // 手动增删/管理雷达关键词
+    updateKeywords(action, keyword = '', keywords = null) {
+        return request('/api/strategy/keywords', {
+            method: 'POST',
+            body: JSON.stringify({ action, keyword, keywords })
+        });
     }
 };

@@ -44,20 +44,35 @@ export function closeStrategyDrawer() {
 function renderStrategyLayout() {
     return `
     <div style="display: flex; flex-direction: column; gap: 12px; height: 100%;">
-        <!-- 今日雷达胶囊区 -->
-        <div class="strategy-radar-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                <span style="font-size: 12px; font-weight: 600; color: var(--primary); display: inline-flex; align-items: center; gap: 4px;">
-                    <i data-lucide="crosshair" style="width: 13px; height: 13px;"></i> 今日动态抓取雷达词
+        <!-- 今日雷达胶囊区 (支持手动增删与 AI 自动推演) -->
+        <div class="strategy-radar-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <span style="font-size: 12.5px; font-weight: 700; color: var(--primary); display: inline-flex; align-items: center; gap: 5px;">
+                    <i data-lucide="crosshair" style="width: 14px; height: 14px;"></i>
+                    <span>情报抓取雷达词库</span>
+                    <span id="strategyKeywordCount" style="font-size: 10.5px; font-weight: 600; padding: 1px 6px; border-radius: 10px; background: rgba(37,99,235,0.1); color: var(--primary);">0</span>
                 </span>
-                <button class="select-all-btn" id="btnAiRadarRefresh" type="button" style="font-size: 11px; padding: 2px 8px;">
-                    <i data-lucide="sparkles" style="width: 11px; height: 11px;"></i> AI 自动推演
+                <button class="select-all-btn" id="btnAiRadarRefresh" type="button" style="font-size: 11px; padding: 3px 9px; display: inline-flex; align-items: center; gap: 4px;" title="基于今日前沿战报，AI 智能提炼最新雷达词">
+                    <i data-lucide="sparkles" style="width: 11px; height: 11px;"></i>
+                    <span>AI 智能推演</span>
                 </button>
             </div>
-            <div id="strategyActiveKeywords" style="display: flex; flex-wrap: wrap; gap: 6px;">
+            
+            <!-- 雷达词动态列表 (支持独立删除) -->
+            <div id="strategyActiveKeywords" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; align-items: center;">
                 <span style="font-size: 11px; color: var(--text-light);">加载雷达词库中...</span>
             </div>
-            <div id="strategySummaryDesc" style="font-size: 11.5px; color: var(--text-light); margin-top: 8px; line-height: 1.4;"></div>
+
+            <!-- 手动快速添加关键词栏 -->
+            <div style="display: flex; gap: 6px; margin-top: 10px; align-items: center;">
+                <input type="text" id="manualKeywordInput" placeholder="+ 输入自定义关键词手动添加 (如: 歼-35A, 萨德系统)" style="flex: 1; height: 32px; border-radius: 6px; border: 1px dashed var(--border); padding: 0 10px; font-size: 12px; background: var(--bg-surface); color: var(--text-main); outline: none;" />
+                <button type="button" id="btnAddManualKeyword" onclick="window.app.addManualKeyword()" style="height: 32px; padding: 0 12px; border-radius: 6px; background: var(--primary); color: #fff; border: none; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 3px;">
+                    <i data-lucide="plus" style="width: 13px; height: 13px;"></i>
+                    <span>添加</span>
+                </button>
+            </div>
+
+            <div id="strategySummaryDesc" style="font-size: 11.5px; color: var(--text-muted); margin-top: 8px; line-height: 1.4;"></div>
         </div>
 
         <!-- 对话消息区 -->
@@ -95,6 +110,9 @@ function _bindInternalEvents() {
         if (e.target && e.target.id === 'strategyChatInput' && e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendStrategyTuneMessage();
+        } else if (e.target && e.target.id === 'manualKeywordInput' && e.key === 'Enter') {
+            e.preventDefault();
+            addManualKeyword();
         }
     });
 }
@@ -134,15 +152,25 @@ function renderStrategyContent(strategy) {
     if (strategy && strategy.active_keywords) {
         updateHomeRadarBar(strategy.active_keywords);
     }
+    const countBadge = document.getElementById('strategyKeywordCount');
     const radarContainer = document.getElementById('strategyActiveKeywords');
     if (radarContainer) {
         const kws = strategy.active_keywords || [];
-        radarContainer.innerHTML = kws.map(kw => `
-            <span class="radar-kw-pill">
-                <i data-lucide="crosshair" style="width: 10px; height: 10px;"></i>
-                <span>${kw}</span>
-            </span>
-        `).join('');
+        if (countBadge) countBadge.innerText = kws.length;
+
+        if (kws.length === 0) {
+            radarContainer.innerHTML = '<span style="font-size: 11.5px; color: var(--text-muted);">暂无雷达词，请在下方手动添加或点击上方“AI 智能推演”</span>';
+        } else {
+            radarContainer.innerHTML = kws.map(kw => `
+                <span class="radar-kw-pill" style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px 3px 8px; border-radius: 6px; background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.2); font-size: 11.5px; color: var(--text-main); font-weight: 500;">
+                    <i data-lucide="crosshair" style="width: 10px; height: 10px; color: var(--primary);"></i>
+                    <span>${kw}</span>
+                    <button type="button" onclick="window.app.removeManualKeyword('${kw}', event)" style="background: transparent; border: none; padding: 0 2px; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; border-radius: 3px; transition: all 0.15s ease;" onmouseover="this.style.color='#ef4444'; this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.color='var(--text-muted)'; this.style.background='transparent'" title="删除该雷达词">
+                        <i data-lucide="x" style="width: 11px; height: 11px;"></i>
+                    </button>
+                </span>
+            `).join('');
+        }
     }
 
     const summaryEl = document.getElementById('strategySummaryDesc');
@@ -251,4 +279,58 @@ function escapeStrategyHtml(text) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/\n/g, '<br/>');
+}
+
+/**
+ * 手动添加雷达关键词
+ */
+export async function addManualKeyword() {
+    const input = document.getElementById('manualKeywordInput');
+    if (!input) return;
+    const kw = input.value.trim();
+    if (!kw) {
+        showToast('请输入关键词名称', 'warning');
+        return;
+    }
+
+    try {
+        const res = await strategyApi.updateKeywords('add', kw);
+        if (res && res.code === 200) {
+            input.value = '';
+            if (state.currentStrategy) {
+                state.currentStrategy.active_keywords = res.active_keywords;
+                renderStrategyContent(state.currentStrategy);
+            }
+            updateHomeRadarBar(res.active_keywords);
+            showToast(`已成功添加雷达词: ${kw}`, 'success');
+        } else {
+            showToast(res.message || '添加失败', 'error');
+        }
+    } catch (e) {
+        showToast('添加雷达词异常: ' + e.message, 'error');
+    }
+}
+
+/**
+ * 手动删除指定雷达关键词
+ */
+export async function removeManualKeyword(kw, event) {
+    if (event) event.stopPropagation();
+    if (!kw) return;
+
+    try {
+        const res = await strategyApi.updateKeywords('remove', kw);
+        if (res && res.code === 200) {
+            if (state.currentStrategy) {
+                state.currentStrategy.active_keywords = res.active_keywords;
+                renderStrategyContent(state.currentStrategy);
+            }
+            updateHomeRadarBar(res.active_keywords);
+            showToast(`已移除雷达词: ${kw}`, 'info');
+        } else {
+            showToast(res.message || '移除失败', 'error');
+        }
+    } catch (e) {
+        showToast('移除雷达词异常: ' + e.message, 'error');
+    }
 }
