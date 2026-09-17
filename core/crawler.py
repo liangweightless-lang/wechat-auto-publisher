@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import List, Dict, Optional, Any
 import urllib3
 urllib3.disable_warnings()
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config.settings import settings, logger
 
@@ -27,6 +29,32 @@ class DefenseCrawler:
     _TOPICS_CACHE: Dict[str, Any] = {}
     _CACHE_TTL_SECONDS: int = 900  # 15分钟服务端情报缓存
     _TRANSLATE_CACHE: Dict[str, str] = {}  # 翻译结果内存缓存，避免重复调用
+    _DISK_CACHE_FILE: Path = Path("storage/cached_topics.json")
+    _REFRESHING_KEYS: set = set()  # 异步刷新防重锁
+
+    @classmethod
+    def _load_disk_cache(cls) -> Dict[str, Any]:
+        try:
+            if cls._DISK_CACHE_FILE.exists():
+                with open(cls._DISK_CACHE_FILE, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.warning(f"读取磁盘缓存失败: {e}")
+        return {}
+
+    @classmethod
+    def _save_disk_cache(cls, cache_key: str, data: Any):
+        try:
+            cls._DISK_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+            existing = cls._load_disk_cache()
+            existing[cache_key] = {
+                "time": time.time(),
+                "data": data
+            }
+            with open(cls._DISK_CACHE_FILE, "w", encoding="utf-8") as f:
+                json.dump(existing, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.warning(f"写入磁盘缓存失败: {e}")
 
     # ---- 英文判断：超过60%字符是ASCII字母/数字则视为英文 ----
     @staticmethod
@@ -46,7 +74,7 @@ class DefenseCrawler:
         优先使用 Qwen2.5-7B 极速模型（秒级响应、稳定不超时），备用 DeepSeek-V3。
         支持批量切分与本地内存缓存。
         """
-        to_translate = [t for t in titles if cls._is_english(t) and t not in cls._TRANSLATE_CACHE]
+        to_translate = [t for t in titles if cls._is_english(t) and t not in cls._TRANSLATE_CACHE][:20]
         results = {t: cls._TRANSLATE_CACHE[t] for t in titles if t in cls._TRANSLATE_CACHE}
         if not to_translate:
             return results
@@ -57,7 +85,7 @@ class DefenseCrawler:
             return results
 
         # 批次大小切分（每批最多 8 条，避免长提示词排队超时）
-        chunk_size = 8
+        chunk_size = 20
         chunks = [to_translate[i:i + chunk_size] for i in range(0, len(to_translate), chunk_size)]
 
         for chunk in chunks:
@@ -69,39 +97,35 @@ class DefenseCrawler:
                 + numbered
             )
 
-            # 优先 Qwen2.5 极速模型，回退 DeepSeek-V3
-            for model_name in ["Qwen/Qwen2.5-7B-Instruct", "deepseek-ai/DeepSeek-V3"]:
-                try:
-                    resp = requests.post(
-                        f"{base_url}/chat/completions",
-                        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                        json={
-                            "model": model_name,
-                            "messages": [{"role": "user", "content": prompt}],
-                            "temperature": 0.1,
-                            "max_tokens": len(chunk) * 70
-                        },
-                        timeout=12,
-                        verify=False
-                    )
-                    if resp.status_code == 200:
-                        output = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-                        lines = [l.strip() for l in output.strip().split("\n") if l.strip()]
-                        for line in lines:
-                            m = re.match(r"^(\d+)[.、．]\s*(.+)$", line)
-                            if m:
-                                idx = int(m.group(1)) - 1
-                                translated = m.group(2).strip()
-                                if 0 <= idx < len(chunk):
-                                    orig = chunk[idx]
-                                    results[orig] = translated
-                                    cls._TRANSLATE_CACHE[orig] = translated
-                        logger.info(f"[{model_name}] 批量翻译成功：{len(chunk)} 条标题")
-                        break
-                    else:
-                        logger.warning(f"标题翻译模型 {model_name} 状态码: {resp.status_code}")
-                except Exception as e:
-                    logger.warning(f"标题翻译模型 {model_name} 异常: {e}，尝试备用通道")
+            # 仅使用 Qwen2.5 极速模型，3秒快速熔断，绝不因翻译阻塞整体响应
+            try:
+                resp = requests.post(
+                    f"{base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": "Qwen/Qwen2.5-7B-Instruct",
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.1,
+                        "max_tokens": min(len(chunk) * 50, 400)
+                    },
+                    timeout=3.0,
+                    verify=False
+                )
+                if resp.status_code == 200:
+                    output = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+                    lines_out = [l.strip() for l in output.strip().split("\n") if l.strip()]
+                    for line_out in lines_out:
+                        m = re.match(r"^(\d+)[.、．]\s*(.+)$", line_out)
+                        if m:
+                            idx = int(m.group(1)) - 1
+                            translated = m.group(2).strip()
+                            if 0 <= idx < len(chunk):
+                                orig = chunk[idx]
+                                results[orig] = translated
+                                cls._TRANSLATE_CACHE[orig] = translated
+                    logger.info(f"[Qwen2.5-7B] 批量翻译成功：{len(chunk)} 条标题")
+            except Exception as e:
+                logger.warning(f"标题翻译快速熔断跳过 (使用英文原标题): {e}")
 
         return results
 
@@ -217,40 +241,27 @@ class DefenseCrawler:
         official_items = []
         trending_items = []
 
-        # ① 联合国新闻（最高权威官方）
-        try:
-            un_topics = cls._fetch_un_news_official()
-            official_items.extend(un_topics)
-        except Exception as e:
-            logger.warning(f"UN RSS 异常: {e}")
+        # 5 大信源多线程并发池抓取（由串行累加26s缩减为单源最长3.5s熔断）
+        tasks = {
+            "un_zh": cls._fetch_un_news_official,
+            "un_en": cls._fetch_un_news_en_official,
+            "tass": cls._fetch_tass_official,
+            "sputnik": cls._fetch_sputnik_official,
+            "toutiao": cls._fetch_toutiao_hot,
+        }
 
-        # ② 联合国英文官方频道（全球官方顶级信源）
-        try:
-            un_en_topics = cls._fetch_un_news_en_official()
-            official_items.extend(un_en_topics)
-        except Exception as e:
-            logger.warning(f"联合国英文 RSS 异常: {e}")
-
-        # ③ 塔斯社（国家通讯社官方一手战报）
-        try:
-            tass_topics = cls._fetch_tass_official()
-            official_items.extend(tass_topics)
-        except Exception as e:
-            logger.warning(f"塔斯社 RSS 异常: {e}")
-
-        # ③ 俄罗斯卫星社外网（国际一手战报）
-        try:
-            sputnik_topics = cls._fetch_sputnik_official()
-            official_items.extend(sputnik_topics)
-        except Exception as e:
-            logger.warning(f"卫星社 RSS 异常: {e}")
-
-        # ④ 今日头条热搜（国内热点舆情趋势）
-        try:
-            tt_topics = cls._fetch_toutiao_hot()
-            trending_items.extend(tt_topics)
-        except Exception as e:
-            logger.warning(f"头条热搜异常: {e}")
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_source = {executor.submit(func): name for name, func in tasks.items()}
+            for future in as_completed(future_to_source):
+                src_name = future_to_source[future]
+                try:
+                    res = future.result()
+                    if src_name in ("un_zh", "un_en", "tass", "sputnik"):
+                        official_items.extend(res)
+                    else:
+                        trending_items.extend(res)
+                except Exception as e:
+                    logger.warning(f"信源 [{src_name}] 并发抓取熔断或异常: {e}")
 
         # 合并：官方置前，热点跟随
         raw_items = official_items + trending_items
@@ -297,7 +308,7 @@ class DefenseCrawler:
         headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
         items = []
         try:
-            res = requests.get(url, headers=headers, timeout=6)
+            res = requests.get(url, headers=headers, timeout=3.5)
             if res.status_code == 200:
                 root = ET.fromstring(res.content)
                 for it in root.findall('.//item')[:30]:
@@ -340,7 +351,7 @@ class DefenseCrawler:
         headers = {"User-Agent": "Mozilla/5.0"}
         items = []
         try:
-            res = requests.get(url, headers=headers, timeout=5).json()
+            res = requests.get(url, headers=headers, timeout=3.5).json()
             for r in res.get("data", []):
                 title = r.get("Title", "").strip()
                 item_url = r.get("Url", "")
@@ -380,7 +391,7 @@ class DefenseCrawler:
         headers = {"User-Agent": "Mozilla/5.0"}
         items = []
         try:
-            res = requests.get(url, headers=headers, timeout=7, verify=False)
+            res = requests.get(url, headers=headers, timeout=3.5, verify=False)
             if res.status_code == 200:
                 root = ET.fromstring(res.content)
                 for it in root.findall('.//item')[:15]:
@@ -430,7 +441,7 @@ class DefenseCrawler:
         headers = {"User-Agent": "Mozilla/5.0"}
         items = []
         try:
-            res = requests.get(url, headers=headers, timeout=6, verify=False)
+            res = requests.get(url, headers=headers, timeout=3.5, verify=False)
             if res.status_code == 200:
                 root = ET.fromstring(res.content)
                 for it in root.findall('.//item')[:20]:
@@ -481,7 +492,7 @@ class DefenseCrawler:
         headers = {"User-Agent": "Mozilla/5.0"}
         items = []
         try:
-            res = requests.get(url, headers=headers, timeout=7, verify=False)
+            res = requests.get(url, headers=headers, timeout=3.5, verify=False)
             if res.status_code == 200:
                 root = ET.fromstring(res.content)
                 for it in root.findall('.//item')[:15]:
@@ -636,36 +647,20 @@ class DefenseCrawler:
         return clusters
 
     @classmethod
-    def fetch_clustered_topics(cls, category: str = "all", limit: int = 20, force_refresh: bool = False) -> List[Dict[str, Any]]:
-        """获取聚类后的同类事件专题流 (带15分钟缓存与穿透刷新)"""
-        cache_key = f"{category}_{limit}"
-        now = time.time()
-
-        if not force_refresh and cache_key in cls._TOPICS_CACHE:
-            cached_entry = cls._TOPICS_CACHE[cache_key]
-            if now - cached_entry["time"] < cls._CACHE_TTL_SECONDS:
-                logger.info(f"⚡ 命中防务情报服务端缓存 [{category}]，毫秒级直接返回")
-                return cached_entry["data"]
-
+    def _do_fetch_and_cache(cls, category: str, limit: int) -> List[Dict[str, Any]]:
+        """真实执行全网抓取、聚类加权排序并双写内存+磁盘缓存"""
         raw_topics = cls.fetch_multi_source_topics(category=category, limit=limit)
         clusters = cls.cluster_topics(raw_topics)
 
-        cls._TOPICS_CACHE[cache_key] = {
-            "time": now,
-            "data": clusters
-        }
         # 科学多维加权智能排序：官方权威权重(100分) + 交叉篇数(15分/篇) + 策略雷达匹配(20分/命中) + 突发时效
         def calculate_cluster_score(c):
             items = c.get("items", [])
-            # 1. 官方权威度加权 (联合国/塔斯社/外交部等官方基准分)
             has_official = any(item.get("is_official", False) for item in items)
             score = 100 if has_official else 0
 
-            # 2. 篇数与跨渠道聚合热度加权 (多源交叉印证大事件优先)
             topic_count = c.get("topic_count", len(items))
             score += min(topic_count * 15, 90)
 
-            # 3. 今日 AI 策略总监雷达词匹配加权 (用户关注重点自适应置顶)
             try:
                 from core.strategy import StrategyManager
                 radar_kws = StrategyManager.get_active_keywords()
@@ -675,7 +670,6 @@ class DefenseCrawler:
             except Exception:
                 pass
 
-            # 4. 时效加分 (刚刚/数十分钟内发布的突发高权加分)
             latest_time = str(c.get("latest_time", ""))
             if "刚刚" in latest_time or "分钟" in latest_time:
                 score += 20
@@ -685,7 +679,66 @@ class DefenseCrawler:
             return score
 
         clusters.sort(key=calculate_cluster_score, reverse=True)
+
+        cache_key = f"{category}_{limit}"
+        now = time.time()
+        cls._TOPICS_CACHE[cache_key] = {
+            "time": now,
+            "data": clusters
+        }
+        cls._save_disk_cache(cache_key, clusters)
         return clusters
+
+    @classmethod
+    def _async_refresh_topics(cls, category: str, limit: int):
+        """后台静默异步拉取最新数据，避免阻塞任何前端请求"""
+        cache_key = f"{category}_{limit}"
+        if cache_key in cls._REFRESHING_KEYS:
+            return
+        cls._REFRESHING_KEYS.add(cache_key)
+        try:
+            logger.info(f"🔄 [后台异步静默刷新] 开始抓取更新 [{category}]...")
+            cls._do_fetch_and_cache(category, limit)
+            logger.info(f"✅ [后台异步静默刷新] 完成并已更新磁盘缓存 [{category}]")
+        except Exception as e:
+            logger.warning(f"后台异步刷新失败: {e}")
+        finally:
+            cls._REFRESHING_KEYS.discard(cache_key)
+
+    @classmethod
+    def fetch_clustered_topics(cls, category: str = "all", limit: int = 20, force_refresh: bool = False) -> List[Dict[str, Any]]:
+        """获取聚类后的同类事件专题流 (带多级持久化缓存与 Stale-While-Revalidate 异步秒开机制)"""
+        cache_key = f"{category}_{limit}"
+        now = time.time()
+
+        # 1. 优先命中内存缓存
+        if not force_refresh and cache_key in cls._TOPICS_CACHE:
+            cached_entry = cls._TOPICS_CACHE[cache_key]
+            if now - cached_entry["time"] < cls._CACHE_TTL_SECONDS:
+                logger.info(f"⚡ 命中防务情报内存缓存 [{category}]，毫秒级直接返回")
+                return cached_entry["data"]
+
+        # 2. 内存未命中（如服务刚部署重启），尝试从磁盘读取持久化缓存（实现开机首开秒级兜底）
+        disk_data = None
+        if not force_refresh:
+            disk_cache = cls._load_disk_cache()
+            if cache_key in disk_cache:
+                entry = disk_cache[cache_key]
+                cls._TOPICS_CACHE[cache_key] = entry
+                disk_data = entry.get("data")
+                cache_age = now - entry.get("time", 0)
+                if cache_age < cls._CACHE_TTL_SECONDS:
+                    logger.info(f"⚡ 命中磁盘持久化缓存 [{category}]，毫秒级直接返回")
+                    return disk_data
+
+        # 3. 若有磁盘历史数据（哪怕过期），先 0.01 秒直出返回给前端，后台触发异步刷新
+        if disk_data and not force_refresh:
+            logger.info(f"🔄 发现历史磁盘情报 [{category}]，0.01秒直出呈现，后台启动异步静默拉取")
+            threading.Thread(target=cls._async_refresh_topics, args=(category, limit), daemon=True).start()
+            return disk_data
+
+        # 4. 全新启动无任何历史数据或用户强制点击换一批/刷新：同步多源并发抓取并落盘
+        return cls._do_fetch_and_cache(category, limit)
 
     @classmethod
     def search_official_statements(cls, keyword: str, cluster_name: str = "") -> List[Dict[str, Any]]:
