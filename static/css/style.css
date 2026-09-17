@@ -2502,3 +2502,113 @@ body {
     visibility: visible;
     transform: translate(-50%, -105%);
 }
+
+/* ================= 快捷渠道直达卡片 (One-Click Launchers) ================= */
+.channel-launchers-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    margin-top: 14px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+.channel-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.channel-card-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.channel-card-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.channel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+}
+
+.channel-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-main);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+    text-align: left;
+    font-family: inherit;
+}
+
+.channel-btn:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.channel-btn:active {
+    transform: translateY(0);
+}
+
+.channel-btn-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 4px;
+}
+
+.channel-btn-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.channel-btn-badge {
+    font-size: 9.5px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+}
+
+.channel-btn-badge.primary {
+    background: rgba(37, 99, 235, 0.12);
+    color: #2563eb;
+}
+
+.channel-btn-badge.hot {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+
+.channel-btn-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.3;
+}

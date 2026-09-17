@@ -276,6 +276,26 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 微信公众号生态快捷渠道 -->
+                <div class="channel-launchers-card">
+                    <div class="channel-card-header">
+                        <div class="channel-card-title">
+                            <i data-lucide="send" style="width: 14px; height: 14px; color: #10b981;"></i>
+                            <span>微信公众平台直达渠道</span>
+                        </div>
+                        <span class="channel-card-hint">点击自动复制微信富文本排版，直达草稿箱直接粘贴</span>
+                    </div>
+                    <div class="channel-grid">
+                        <button class="channel-btn" onclick="window.app.openExternalChannel('https://mp.weixin.qq.com/', '微信公众平台')">
+                            <div class="channel-btn-top">
+                                <span class="channel-btn-name">🟢 微信公众平台</span>
+                                <span class="channel-btn-badge">官方后台</span>
+                            </div>
+                            <span class="channel-btn-desc">直达草稿箱直接 Ctrl+V 粘贴发布</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- 平台 2: 抖音短视频解说脚本容器 -->
@@ -290,6 +310,54 @@
                     </div>
                     <textarea class="mobile-script-textarea" id="douyinScriptText" readonly placeholder="推文生成完成后，将自动输出具有高完播率的抖音分镜头解说脚本..."></textarea>
                 </div>
+
+                <!-- 抖音短视频专属快捷生成渠道直达 -->
+                <div class="channel-launchers-card">
+                    <div class="channel-card-header">
+                        <div class="channel-card-title">
+                            <i data-lucide="zap" style="width: 14px; height: 14px; color: #eab308;"></i>
+                            <span>短视频生成与发布快捷渠道</span>
+                        </div>
+                        <span class="channel-card-hint">点击自动复制脚本并直达平台粘贴成片</span>
+                    </div>
+                    <div class="channel-grid">
+                        <button class="channel-btn" onclick="window.app.openExternalChannel('https://www.capcut.cn/', '剪映专业版')">
+                            <div class="channel-btn-top">
+                                <span class="channel-btn-name">🎬 剪映 Web</span>
+                                <span class="channel-btn-badge hot">🔥 免费成片</span>
+                            </div>
+                            <span class="channel-btn-desc">首选！图文成片一键渲染</span>
+                        </button>
+                        <button class="channel-btn" onclick="window.app.openExternalChannel('https://aigc.baidu.com/', '百度度加剪辑')">
+                            <div class="channel-btn-top">
+                                <span class="channel-btn-name">⚡ 度加剪辑</span>
+                                <span class="channel-btn-badge">每日赠送</span>
+                            </div>
+                            <span class="channel-btn-desc">百度热点图文转视频</span>
+                        </button>
+                        <button class="channel-btn" onclick="window.app.openExternalChannel('https://zenvideo.qq.com/', '腾讯智影')">
+                            <div class="channel-btn-top">
+                                <span class="channel-btn-name">🎥 腾讯智影</span>
+                                <span class="channel-btn-badge primary">正版素材</span>
+                            </div>
+                            <span class="channel-btn-desc">拟真防务解说与数字人</span>
+                        </button>
+                        <button class="channel-btn" onclick="window.app.openExternalChannel('https://klingai.kuaishou.com/', '快手可灵AI')">
+                            <div class="channel-btn-top">
+                                <span class="channel-btn-name">🤖 可灵 AI</span>
+                                <span class="channel-btn-badge hot">高画质</span>
+                            </div>
+                            <span class="channel-btn-desc">电影级原创军事镜头</span>
+                        </button>
+                        <button class="channel-btn" onclick="window.app.openExternalChannel('https://creator.douyin.com/', '抖音创作者平台')">
+                            <div class="channel-btn-top">
+                                <span class="channel-btn-name">📱 抖音创作者</span>
+                                <span class="channel-btn-badge">官方发布</span>
+                            </div>
+                            <span class="channel-btn-desc">成片一键上传发布</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- 平台 3: 小红书爆款图文笔记容器 -->
@@ -303,6 +371,33 @@
                         <span class="script-sub-hint">含反差爆款标题、结构化清单与核心标签</span>
                     </div>
                     <textarea class="mobile-script-textarea" id="xiaohongshuNoteText" readonly placeholder="推文生成完成后，将自动生成小红书爆款图文笔记..."></textarea>
+                </div>
+
+                <!-- 小红书快捷渠道直达 -->
+                <div class="channel-launchers-card">
+                    <div class="channel-card-header">
+                        <div class="channel-card-title">
+                            <i data-lucide="bookmark" style="width: 14px; height: 14px; color: #ef4444;"></i>
+                            <span>小红书发布与封面设计渠道</span>
+                        </div>
+                        <span class="channel-card-hint">点击自动复制笔记文案并直达平台</span>
+                    </div>
+                    <div class="channel-grid">
+                        <button class="channel-btn" onclick="window.app.openExternalChannel('https://creator.xiaohongshu.com/', '小红书创作者服务平台')">
+                            <div class="channel-btn-top">
+                                <span class="channel-btn-name">📕 小红书创作平台</span>
+                                <span class="channel-btn-badge hot">一键发布</span>
+                            </div>
+                            <span class="channel-btn-desc">图文笔记直接粘贴发布</span>
+                        </button>
+                        <button class="channel-btn" onclick="window.app.openExternalChannel('https://www.canva.cn/', 'Canva可画')">
+                            <div class="channel-btn-top">
+                                <span class="channel-btn-name">🎨 Canva 可画</span>
+                                <span class="channel-btn-badge">封面排版</span>
+                            </div>
+                            <span class="channel-btn-desc">海量 3:4 爆款封面模板</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -413,7 +508,7 @@
     <!-- 轻量级手机 Toast 提示条 -->
     <div class="toast-bar" id="mobileToast">提示信息</div>
 
-    <script type="module" src="/static/js/main.js?v=26.0"></script>
+    <script type="module" src="/static/js/main.js?v=27.0"></script>
     <script>
         if (window.lucide) {
             lucide.createIcons();

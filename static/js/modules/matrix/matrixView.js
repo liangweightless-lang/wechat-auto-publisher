@@ -155,3 +155,14 @@ function copyRichTextToClipboard(html, plain) {
 
     return succeeded;
 }
+
+/**
+ * 快捷渠道直达联动：自动拷贝当前内容并一键弹射打开外部生成/发布工具
+ */
+export function openExternalChannel(url, channelName) {
+    copyActiveContent();
+    showToast(`已自动复制脚本，正在直达【${channelName}】，粘贴即可生成！`, 'success');
+    setTimeout(() => {
+        window.open(url, '_blank');
+    }, 250);
+}
