@@ -97,11 +97,12 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             query = parse_qs(parsed.query)
             cat = query.get("category", ["all"])[0]
             clustered = query.get("clustered", ["1"])[0]
+            force_refresh = (query.get("refresh", ["0"])[0] == "1")
             try:
                 topics = DefenseCrawler.fetch_multi_source_topics(category=cat, limit=25)
                 DatabaseManager.record_news_items(topics)
                 if clustered == "1":
-                    clusters = DefenseCrawler.cluster_topics(topics)
+                    clusters = DefenseCrawler.fetch_clustered_topics(category=cat, limit=25, force_refresh=force_refresh)
                     self._send_json({"code": 200, "clusters": clusters, "raw_topics": topics})
                 else:
                     self._send_json({"code": 200, "topics": topics})

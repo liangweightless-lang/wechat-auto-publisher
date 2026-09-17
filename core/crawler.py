@@ -23,6 +23,9 @@ from config.settings import settings, logger
 
 
 class DefenseCrawler:
+    _TOPICS_CACHE: Dict[str, Any] = {}
+    _CACHE_TTL_SECONDS: int = 900  # 15分钟服务端情报缓存
+
     """防务智库多源聚合器 (四大垂直选题体系驱动)"""
 
     HISTORY_FILE = Path(__file__).resolve().parent.parent / "assets" / "crawled_history.json"
@@ -444,10 +447,25 @@ class DefenseCrawler:
         return clusters
 
     @classmethod
-    def fetch_clustered_topics(cls, category: str = "all", limit: int = 20) -> List[Dict[str, Any]]:
-        """获取聚类后的同类事件专题流 (带折叠与子报道)"""
+    def fetch_clustered_topics(cls, category: str = "all", limit: int = 20, force_refresh: bool = False) -> List[Dict[str, Any]]:
+        """获取聚类后的同类事件专题流 (带15分钟缓存与穿透刷新)"""
+        cache_key = f"{category}_{limit}"
+        now = time.time()
+
+        if not force_refresh and cache_key in cls._TOPICS_CACHE:
+            cached_entry = cls._TOPICS_CACHE[cache_key]
+            if now - cached_entry["time"] < cls._CACHE_TTL_SECONDS:
+                logger.info(f"⚡ 命中防务情报服务端缓存 [{category}]，毫秒级直接返回")
+                return cached_entry["data"]
+
         raw_topics = cls.fetch_multi_source_topics(category=category, limit=limit)
-        return cls.cluster_topics(raw_topics)
+        clusters = cls.cluster_topics(raw_topics)
+
+        cls._TOPICS_CACHE[cache_key] = {
+            "time": now,
+            "data": clusters
+        }
+        return clusters
 
     @classmethod
     def search_official_statements(cls, keyword: str, cluster_name: str = "") -> List[Dict[str, Any]]:

@@ -115,35 +115,76 @@ function selectCategory(cat, el) {
 
 let selectedArticlesMap = new Map();
 let currentClustersData = [];
+const clientClustersCache = new Map(); // 前端极速秒开缓存
 
-async function loadHotTopics(cat = 'all') {
+function renderSkeletonLoading() {
+    return `
+    <div class="skeleton-container">
+        <div class="skeleton-card">
+            <div class="skeleton-header-row">
+                <div class="skeleton-shimmer skeleton-tag"></div>
+                <div class="skeleton-shimmer skeleton-badge"></div>
+            </div>
+            <div class="skeleton-shimmer skeleton-title"></div>
+            <div class="skeleton-shimmer skeleton-sub"></div>
+        </div>
+        <div class="skeleton-card">
+            <div class="skeleton-header-row">
+                <div class="skeleton-shimmer skeleton-tag" style="width:75px;"></div>
+                <div class="skeleton-shimmer skeleton-badge"></div>
+            </div>
+            <div class="skeleton-shimmer skeleton-title" style="width:92%;"></div>
+            <div class="skeleton-shimmer skeleton-sub" style="width:58%;"></div>
+        </div>
+        <div class="skeleton-card">
+            <div class="skeleton-header-row">
+                <div class="skeleton-shimmer skeleton-tag" style="width:65px;"></div>
+                <div class="skeleton-shimmer skeleton-badge"></div>
+            </div>
+            <div class="skeleton-shimmer skeleton-title" style="width:80%;"></div>
+            <div class="skeleton-shimmer skeleton-sub" style="width:45%;"></div>
+        </div>
+    </div>
+    `;
+}
+
+async function loadHotTopics(cat = 'all', forceRefresh = false) {
     const listEl = document.getElementById('mobileHotList');
     if (!listEl) return;
-    listEl.innerHTML = `
-        <div class="feed-empty-state">
-            <i data-lucide="loader-2" class="spin-icon" style="width: 20px; height: 20px;"></i>
-            <span>正在检索多源情报并智能聚类同类事件...</span>
-        </div>
-    `;
-    refreshIcons();
+
+    // 1. 若无需强制刷新且命中前端缓存，直接 0ms 秒开渲染！
+    if (!forceRefresh && clientClustersCache.has(cat)) {
+        const cachedClusters = clientClustersCache.get(cat);
+        currentClustersData = cachedClusters;
+        renderClusters(cachedClusters);
+        return;
+    }
+
+    // 2. 否则展示市面标准的现代化流光骨架屏
+    listEl.innerHTML = renderSkeletonLoading();
 
     try {
-        const resp = await fetch(`/api/topics?category=${cat}&clustered=1`);
+        const refreshParam = forceRefresh ? '&refresh=1' : '';
+        const resp = await fetch(`/api/topics?category=${cat}&clustered=1${refreshParam}`);
         const data = await resp.json();
         if (data && data.clusters && data.clusters.length > 0) {
             currentClustersData = data.clusters;
+            clientClustersCache.set(cat, data.clusters); // 存入前端缓存
             renderClusters(data.clusters);
+            if (forceRefresh) {
+                showToast('🔄 已获取全网最新防务情报与官方通报！');
+            }
         } else {
             listEl.innerHTML = `
                 <div class="feed-empty-state">
                     <i data-lucide="inbox" style="width: 22px; height: 22px; color: var(--text-light);"></i>
-                    <span>暂未拉取到该分类热点，轻点右上角刷新重试</span>
+                    <span>暂未检索到该分类情报，轻点右上角刷新重试</span>
                 </div>
             `;
             refreshIcons();
         }
     } catch (e) {
-        listEl.innerHTML = `<div class="feed-empty-state" style="color: #ef4444;">拉取失败: ${e.message}</div>`;
+        listEl.innerHTML = `<div class="feed-empty-state" style="color: #ef4444;">拉取情报异常: ${e.message}</div>`;
     }
 }
 
