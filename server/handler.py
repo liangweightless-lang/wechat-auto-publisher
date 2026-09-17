@@ -100,10 +100,14 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             clustered = query.get("clustered", ["1"])[0]
             force_refresh = (query.get("refresh", ["0"])[0] == "1")
             try:
-                topics = DefenseCrawler.fetch_multi_source_topics(category=cat, limit=25)
-                DatabaseManager.record_news_items(topics)
                 if clustered == "1":
                     clusters = DefenseCrawler.fetch_clustered_topics(category=cat, limit=25, force_refresh=force_refresh)
+                    all_items = []
+                    for c in clusters:
+                        all_items.extend(c.get("items", []))
+                    if all_items:
+                        DatabaseManager.record_news_items(all_items)
+
                     # 动态生成今日真实主题胶囊 (重磅多源大事件聚合优先，单篇归入综合快讯)
                     total_count = sum(c.get("topic_count", len(c.get("items", []))) for c in clusters)
                     dynamic_categories = [
@@ -134,8 +138,10 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                             "name": "综合快报",
                             "count": single_count
                         })
-                    self._send_json({"code": 200, "clusters": clusters, "dynamic_categories": dynamic_categories, "raw_topics": topics})
+                    self._send_json({"code": 200, "clusters": clusters, "dynamic_categories": dynamic_categories, "raw_topics": all_items})
                 else:
+                    topics = DefenseCrawler.fetch_multi_source_topics(category=cat, limit=25)
+                    DatabaseManager.record_news_items(topics)
                     self._send_json({"code": 200, "topics": topics})
             except Exception as e:
                 logger.error(f"拉取情报异常: {e}")

@@ -168,6 +168,11 @@ export function renderClusters(clusters) {
                 <div class="cluster-main-title-block">
                     <h3 class="cluster-heading">${cluster.cluster_name}</h3>
                     ${showSubPreview ? `<p class="cluster-sub-preview">${cluster.main_title}</p>` : ''}
+                    ${(cluster.keywords && cluster.keywords.length > 0) ? `
+                        <div class="cluster-keywords-row">
+                            ${cluster.keywords.map(kw => `<span class="kw-tag">${kw}</span>`).join("")}
+                        </div>
+                    ` : ""}
                 </div>
             </div>
             <div class="cluster-body" id="clusterBody_${cluster.cluster_id}">
@@ -224,6 +229,11 @@ export function renderSubNewsItems(clusterId, items) {
                         <i data-lucide="clock" style="width: 10px; height: 10px;"></i>
                         <span>${pubTime}</span>
                     </span>
+                    ${(item.keywords && item.keywords.length > 0) ? `
+                        <span class="sub-kw-group">
+                            ${item.keywords.slice(0, 2).map(k => `<span class="sub-kw-tag">${k}</span>`).join("")}
+                        </span>
+                    ` : ""}
                     ${url ? `<span>·</span><a href="${url}" target="_blank" onclick="event.stopPropagation()" style="color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><i data-lucide="external-link" style="width: 10px; height: 10px;"></i>出处公告</a>` : ''}
                 </div>
             </div>

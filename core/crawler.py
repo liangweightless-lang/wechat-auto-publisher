@@ -31,6 +31,38 @@ class DefenseCrawler:
     _TRANSLATE_CACHE: Dict[str, str] = {}  # 翻译结果内存缓存，避免重复调用
     _DISK_CACHE_FILE: Path = Path("storage/cached_topics.json")
     _REFRESHING_KEYS: set = set()  # 异步刷新防重锁
+    TAG_RULES = [
+        (["中东", "以色列", "黎巴嫩", "也门", "胡塞", "巴以", "加沙", "特拉维夫", "内塔尼亚胡", "伊朗", "叙利亚", "真主党", "贝鲁特"], "#中东局势"),
+        (["俄乌", "乌克兰", "基辅", "俄罗斯", "普京", "泽连斯基", "库尔斯克", "顿巴斯", "莫斯科", "克里米亚", "哈尔科夫"], "#俄乌战线"),
+        (["台海", "台湾", "赖清德", "台军", "澎湖", "金门", "两岸", "过航"], "#台海态势"),
+        (["南海", "仁爱礁", "菲律宾", "仙宾礁", "黄岩岛", "马尼拉", "侵闯"], "#南海动态"),
+        (["朝鲜", "半岛", "平壤", "朝韩", "首尔", "三八线", "金正恩"], "#半岛风云"),
+        (["美国", "白宫", "五角大楼", "特朗普", "拜登", "美军", "华盛顿", "印太"], "#美大选与战略"),
+        (["日本", "自卫队", "东京", "岸田", "石破茂", "防卫省"], "#日本防务"),
+        (["导弹", "高超音速", "弹道导弹", "防空", "反导", "爱国者", "S-400", "拦截", "火箭军"], "#防空反导"),
+        (["无人机", "蜂群", "察打一体", "低空", "FPV", "拦截无人机"], "#无人机攻防"),
+        (["航母", "驱逐舰", "核潜艇", "护卫舰", "战舰", "水面舰艇", "两栖攻击舰"], "#海战装备"),
+        (["战机", "五代机", "隐身", "轰炸机", "歼-20", "苏-57", "F-35", "空战", "突防"], "#航空战力"),
+        (["联合国", "安理会", "决议", "古特雷斯", "维和", "国际法院"], "#联合国安理会"),
+        (["外交部", "王毅", "发言人", "表态", "大国外交", "一带一路", "金砖", "领导人", "中方立场"], "#大国外交"),
+        (["演习", "演训", "军演", "联合演习", "实弹", "全流程", "常态化"], "#军事演练"),
+        (["制裁", "封锁", "贸易战", "脱钩", "出口管制", "关税", "打压"], "#战略制裁")
+    ]
+
+    @classmethod
+    def extract_tags(cls, title: str, summary: str = "") -> List[str]:
+        """基于第一性原理与防务实体词库智能提取 1~3 个核心关键字标签"""
+        text = (title + " " + summary).lower()
+        matched = []
+        for keywords, tag in cls.TAG_RULES:
+            if any(k.lower() in text for k in keywords):
+                matched.append(tag)
+                if len(matched) >= 3:
+                    break
+        if not matched:
+            matched = ["#重点要闻"]
+        return matched
+
 
     @classmethod
     def _load_disk_cache(cls) -> Dict[str, Any]:
@@ -241,8 +273,11 @@ class DefenseCrawler:
         official_items = []
         trending_items = []
 
-        # 5 大信源多线程并发池抓取（由串行累加26s缩减为单源最长3.5s熔断）
+        # 8 大信源多线程并发池抓取（重点覆盖新华社、人民网、央视/军网三大国家级核心央媒）
         tasks = {
+            "xinhua": cls._fetch_xinhua_official,
+            "people": cls._fetch_people_official,
+            "cctv": cls._fetch_cctv_official,
             "un_zh": cls._fetch_un_news_official,
             "un_en": cls._fetch_un_news_en_official,
             "tass": cls._fetch_tass_official,
@@ -250,20 +285,37 @@ class DefenseCrawler:
             "toutiao": cls._fetch_toutiao_hot,
         }
 
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        with ThreadPoolExecutor(max_workers=8) as executor:
             future_to_source = {executor.submit(func): name for name, func in tasks.items()}
             for future in as_completed(future_to_source):
                 src_name = future_to_source[future]
                 try:
                     res = future.result()
-                    if src_name in ("un_zh", "un_en", "tass", "sputnik"):
+                    if src_name in ("xinhua", "people", "cctv", "un_zh", "un_en", "tass", "sputnik"):
                         official_items.extend(res)
                     else:
                         trending_items.extend(res)
                 except Exception as e:
                     logger.warning(f"信源 [{src_name}] 并发抓取熔断或异常: {e}")
 
-        # 合并：官方置前，热点跟随
+        # 核心权重重排：新华社、人民网、央视/军网三大国家级央媒享有最高置顶优先权
+        def source_priority(it):
+            s = it.get("source", "")
+            if "新华" in s:
+                return 0
+            if "人民网" in s:
+                return 1
+            if "央视" in s or "军网" in s:
+                return 2
+            if "联合国" in s:
+                return 3
+            if "塔斯社" in s:
+                return 4
+            return 5
+
+        official_items.sort(key=source_priority)
+
+        # 合并：国家级官媒置前，热点跟随
         raw_items = official_items + trending_items
 
         # 去重与分类过滤
@@ -279,6 +331,9 @@ class DefenseCrawler:
             # 自动补全分类
             if "category" not in item or not item["category"]:
                 item["category"] = cls._classify_topic(t, item.get("summary", ""))
+
+            # 提取防务与地缘关键字标签
+            item["keywords"] = cls.extract_tags(t, item.get("summary", ""))
 
             # 按用户请求的分类过滤
             if category != "all" and item["category"] != category:
@@ -527,6 +582,107 @@ class DefenseCrawler:
         return items
 
     @classmethod
+    def _fetch_xinhua_official(cls) -> List[Dict[str, Any]]:
+        """新华社·国家专电 (国家级最高官方通讯社一手权威发布)"""
+        url = "http://m.news.cn/"
+        headers = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)"}
+        items = []
+        try:
+            from bs4 import BeautifulSoup
+            r = requests.get(url, headers=headers, timeout=3.5)
+            soup = BeautifulSoup(r.content.decode("utf-8", errors="ignore"), "html.parser")
+            for a in soup.find_all("a", href=True):
+                t = a.get_text().strip()
+                h = a["href"]
+                if len(t) >= 10 and ("/202" in h or "/politics/" in h or "/world/" in h):
+                    if not any(bad in t for bad in ["客户端", "新华网", "直播", "更多", "图集", "专题"]):
+                        full_u = h if h.startswith("http") else ("http://m.news.cn" + h)
+                        items.append({
+                            "title": t,
+                            "url": full_u,
+                            "source": "新华社·国家专电",
+                            "is_official": True,
+                            "is_overseas": False,
+                            "pub_time": "实时",
+                            "hot": "国家专电",
+                            "category": cls._classify_topic(t),
+                            "summary": f"新华社官方重磅发布：{t}。"
+                        })
+        except Exception as e:
+            logger.warning(f"新华社抓取异常: {e}")
+        return items[:25]
+
+    @classmethod
+    def _fetch_people_official(cls) -> List[Dict[str, Any]]:
+        """人民网·权威发布 (人民日报社官方国际与防务一手发布)"""
+        urls = [
+            ("http://world.people.com.cn/GB/1029/index.html", "国际"),
+            ("http://military.people.com.cn/GB/52936/index.html", "军事")
+        ]
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        items = []
+        try:
+            from bs4 import BeautifulSoup
+            for u, cat_name in urls:
+                r = requests.get(u, headers=headers, timeout=3.5)
+                soup = BeautifulSoup(r.content.decode("utf-8", errors="ignore"), "html.parser")
+                for a in soup.find_all("a", href=True):
+                    t = a.get_text().strip()
+                    h = a["href"]
+                    if len(t) >= 10 and ("/n1/" in h or "/GB/" in h):
+                        if not any(bad in t for bad in ["更多", "人民网", "留言", "强国论坛", "版权"]):
+                            full_u = h if h.startswith("http") else ("http://world.people.com.cn" + h if "world" in u else "http://military.people.com.cn" + h)
+                            items.append({
+                                "title": t,
+                                "url": full_u,
+                                "source": "人民网·权威发布",
+                                "is_official": True,
+                                "is_overseas": False,
+                                "pub_time": "实时",
+                                "hot": "权威发布",
+                                "category": cls._classify_topic(t),
+                                "summary": f"人民网官方报道：{t}。"
+                            })
+        except Exception as e:
+            logger.warning(f"人民网抓取异常: {e}")
+        return items[:25]
+
+    @classmethod
+    def _fetch_cctv_official(cls) -> List[Dict[str, Any]]:
+        """央视军事与中国军网·权威聚焦 (中央广播电视总台与军方一手发布)"""
+        url = "http://www.81.cn/yw_208727/index.html"
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        items = []
+        try:
+            from bs4 import BeautifulSoup
+            import re
+            r = requests.get(url, headers=headers, timeout=3.5)
+            soup = BeautifulSoup(r.content.decode("utf-8", errors="ignore"), "html.parser")
+            for a in soup.find_all("a", href=True):
+                t = a.get_text().strip()
+                h = a["href"]
+                if len(t) >= 10 and (".htm" in h or "/yw_" in h):
+                    if re.match(r"^[\d\s\-:\/]+$", t):
+                        continue
+                    if not any(bad in t for bad in ["更多", "中国军网", "客户端", "阅读全文", "图集", "视频"]):
+                        full_u = h if h.startswith("http") else ("http://www.81.cn/yw_208727/" + h)
+                        items.append({
+                            "title": t,
+                            "url": full_u,
+                            "source": "央视军事·权威聚焦",
+                            "is_official": True,
+                            "is_overseas": False,
+                            "pub_time": "实时",
+                            "hot": "军政聚焦",
+                            "category": cls._classify_topic(t),
+                            "summary": f"央视军事与军网焦点：{t}。"
+                        })
+        except Exception as e:
+            logger.warning(f"央视/军网抓取异常: {e}")
+        return items[:20]
+
+
+    @classmethod
     def fetch_hot_topics(cls, keywords: List[str] = None, limit: int = 15) -> List[Dict[str, Any]]:
         return cls.fetch_multi_source_topics(category="all", limit=limit)
 
@@ -618,6 +774,14 @@ class DefenseCrawler:
             if matched_items:
                 # 提取参与报道的媒体列表
                 sources = list(set([m.get("source", "综合快讯") for m in matched_items]))
+                c_tags = []
+                for m in matched_items:
+                    for kw in m.get("keywords", []):
+                        if kw not in c_tags:
+                            c_tags.append(kw)
+                if not c_tags:
+                    c_tags = cls.extract_tags(grp["name"], matched_items[0]["title"])
+
                 clusters.append({
                     "cluster_id": f"cluster_{len(clusters)+1}",
                     "cluster_name": grp["name"],
@@ -626,6 +790,7 @@ class DefenseCrawler:
                     "category": matched_items[0].get("category", "综合热点"),
                     "sources": sources,
                     "latest_time": matched_items[0].get("pub_time", "刚刚"),
+                    "keywords": c_tags[:3],
                     "items": matched_items
                 })
 
@@ -641,6 +806,7 @@ class DefenseCrawler:
                 "category": t.get("category", "综合热点"),
                 "sources": [t.get("source", "综合快讯")],
                 "latest_time": t.get("pub_time", "刚刚"),
+                "keywords": t.get("keywords", cls.extract_tags(t.get("title", "")))[:3],
                 "items": [t]
             })
 
@@ -655,8 +821,15 @@ class DefenseCrawler:
         # 科学多维加权智能排序：官方权威权重(100分) + 交叉篇数(15分/篇) + 策略雷达匹配(20分/命中) + 突发时效
         def calculate_cluster_score(c):
             items = c.get("items", [])
+            # 重点：国家级核心官媒（新华社、人民网、央视军事、中国军网、外交部）享受最高150分置顶权重
+            has_national_official = any(any(k in item.get("source", "") for k in ["新华", "人民网", "央视", "军网", "外交部", "国防部"]) for item in items)
             has_official = any(item.get("is_official", False) for item in items)
-            score = 100 if has_official else 0
+            if has_national_official:
+                score = 150
+            elif has_official:
+                score = 100
+            else:
+                score = 0
 
             topic_count = c.get("topic_count", len(items))
             score += min(topic_count * 15, 90)
