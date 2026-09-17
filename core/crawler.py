@@ -322,15 +322,9 @@ class DefenseCrawler:
 
     @classmethod
     def _classify_topic(cls, title: str, summary: str = "") -> str:
-        """基于产品四大方向的智能分类器"""
-        text = title + " " + summary
-        if any(k in text for k in ["南海", "台海", "仁爱礁", "黄岩岛", "菲律宾", "周边国家动向", "舆情"]):
-            return "regional_intel"
-        if any(k in text for k in ["武器", "战机", "航母", "导弹", "F-35", "苏-57", "高超音速", "核潜艇", "性能参数", "近防", "微波武器", "防空系统"]):
-            return "weapons"
-        if any(k in text for k in ["条约", "宿怨", "起因经过", "教派", "宗教", "什叶派", "逊尼派", "制裁", "大国博弈", "外交", "演进", "裂变"]):
-            return "relations"
-        return "military_hot"
+        """基于宏观六大领域 (domestic/tech/military/intl/livelihood) 的多维精准特征分类器"""
+        cat, _, _, _ = cls._calc_badge_and_score([{"title": title, "summary": summary}], title)
+        return cat
 
     @classmethod
     def fetch_multi_source_topics(cls, category: str = "all", limit: int = 20) -> List[Dict[str, Any]]:
@@ -404,9 +398,14 @@ class DefenseCrawler:
             # 提取防务与地缘关键字标签
             item["keywords"] = cls.extract_tags(t, item.get("summary", ""))
 
-            # 按用户请求的分类过滤
-            if category != "all" and item["category"] != category:
-                continue
+            # 统一分类体系过滤 (兼容国内/科技/军事/国际/民生及旧标识)
+            if category != "all":
+                target_cat = category
+                old_map = {"military_hot": "military", "weapons": "tech", "relations": "intl", "regional_intel": "intl"}
+                if target_cat in old_map:
+                    target_cat = old_map[target_cat]
+                if item["category"] != target_cat:
+                    continue
 
             # 安全合规前置过滤
             if any(sk in t for sk in settings.SENSITIVE_KEYWORDS):
@@ -971,9 +970,28 @@ class DefenseCrawler:
 
     @classmethod
     def _do_fetch_and_cache(cls, category: str, limit: int) -> List[Dict[str, Any]]:
-        """真实执行全网抓取、聚类加权排序并双写内存+磁盘缓存"""
-        raw_topics = cls.fetch_multi_source_topics(category=category, limit=limit)
-        clusters = cls.cluster_topics(raw_topics)
+        """真实执行全网抓取、聚类加权排序并按分类精准筛选返回 (保证任何模块均有丰富情报，绝不为空)"""
+        # 全量抓取保证聚类视野宏观完整
+        raw_topics = cls.fetch_multi_source_topics(category="all", limit=max(limit * 2, 40))
+        all_clusters = cls.cluster_topics(raw_topics)
+
+        # 若请求特定分类，进行精准过滤与兜底
+        if category != "all":
+            target_cat = category
+            old_map = {"military_hot": "military", "weapons": "tech", "relations": "intl", "regional_intel": "intl"}
+            if target_cat in old_map:
+                target_cat = old_map[target_cat]
+            cat_name_map = {"domestic": "国内", "tech": "科技", "military": "军事", "intl": "国际", "livelihood": "民生"}
+            target_badge = cat_name_map.get(target_cat, "")
+
+            matched = [c for c in all_clusters if c.get("category") == target_cat or c.get("badge") == target_badge or c.get("badge") == target_cat]
+            if matched:
+                clusters = matched
+            else:
+                # 若当前批次该特定分类条目较少，置顶全网权威要闻，绝不展示空状态
+                clusters = all_clusters
+        else:
+            clusters = all_clusters
 
         # 科学多维加权智能排序：官方权威权重(100分) + 交叉篇数(15分/篇) + 策略雷达匹配(20分/命中) + 突发时效
         def calculate_cluster_score(c):

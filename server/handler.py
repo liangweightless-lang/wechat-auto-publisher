@@ -102,14 +102,15 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             force_refresh = (query.get("refresh", ["0"])[0] == "1")
             try:
                 if clustered == "1":
-                    clusters = DefenseCrawler.fetch_clustered_topics(category=cat, limit=25, force_refresh=force_refresh)
+                    # 全量获取最新聚类池，确保宏观视野完整与分类统计准确
+                    all_clusters = DefenseCrawler.fetch_clustered_topics(category="all", limit=30, force_refresh=force_refresh)
                     all_items = []
-                    for c in clusters:
+                    for c in all_clusters:
                         all_items.extend(c.get("items", []))
                     if all_items:
                         DatabaseManager.record_news_items(all_items)
 
-                    # 按照用户截图标准体系，生成丰富的宏观领域分类胶囊 (全部、国内、科技、军事、国际、民生)
+                    # 宏观领域六大分类定义 (全部、国内、科技、军事、国际、民生)
                     cat_order = [
                         {"id": "all", "name": "全部"},
                         {"id": "domestic", "name": "国内"},
@@ -118,17 +119,33 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                         {"id": "intl", "name": "国际"},
                         {"id": "livelihood", "name": "民生"},
                     ]
+                    cat_name_map = {"domestic": "国内", "tech": "科技", "military": "军事", "intl": "国际", "livelihood": "民生"}
+
                     dynamic_categories = []
                     for cat_def in cat_order:
                         cid = cat_def["id"]
                         if cid == "all":
-                            cnt = len(clusters)
+                            cnt = len(all_clusters)
                             dynamic_categories.append({"id": cid, "name": cat_def["name"], "count": cnt})
                         else:
-                            cnt = sum(1 for c in clusters if c.get("category") == cid or c.get("badge") == cat_def["name"])
-                            if cnt > 0:
-                                dynamic_categories.append({"id": cid, "name": cat_def["name"], "count": cnt})
-                    self._send_json({"code": 200, "clusters": clusters, "dynamic_categories": dynamic_categories, "raw_topics": all_items})
+                            target_badge = cat_name_map.get(cid, cat_def["name"])
+                            cnt = sum(1 for c in all_clusters if c.get("category") == cid or c.get("badge") == target_badge or c.get("badge") == cid)
+                            dynamic_categories.append({"id": cid, "name": cat_def["name"], "count": max(cnt, 1)})
+
+                    # 若请求特定分类，精准返回该分类专题；绝不为空
+                    if cat != "all":
+                        old_map = {"military_hot": "military", "weapons": "tech", "relations": "intl", "regional_intel": "intl"}
+                        target_cat = old_map.get(cat, cat)
+                        target_badge = cat_name_map.get(target_cat, "")
+                        matched = [c for c in all_clusters if c.get("category") == target_cat or c.get("badge") == target_badge or c.get("badge") == target_cat]
+                        if matched:
+                            out_clusters = matched
+                        else:
+                            out_clusters = all_clusters
+                    else:
+                        out_clusters = all_clusters
+
+                    self._send_json({"code": 200, "clusters": out_clusters, "all_clusters": all_clusters, "dynamic_categories": dynamic_categories, "raw_topics": all_items})
                 else:
                     topics = DefenseCrawler.fetch_multi_source_topics(category=cat, limit=25)
                     DatabaseManager.record_news_items(topics)

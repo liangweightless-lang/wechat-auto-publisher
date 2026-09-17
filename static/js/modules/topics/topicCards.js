@@ -79,6 +79,7 @@ export async function fetchAndRenderTopics(cat = 'all', forceRefresh = false) {
     try {
         const data = await topicsApi.fetchTopics(cat, true, forceRefresh);
         if (data && data.clusters && data.clusters.length > 0) {
+            state.allClustersData = data.all_clusters || data.clusters;
             state.currentClustersData = data.clusters;
             state.clientClustersCache.set(cat, data.clusters);
 
@@ -317,11 +318,20 @@ export function renderDynamicCategories(categories, activeId = 'all') {
 export function filterByDynamicCategory(catId, btnEl) {
     state.currentCategory = catId;
     document.querySelectorAll('.category-pill').forEach(b => b.classList.remove('active'));
-    if (btnEl) btnEl.classList.add('active');
+    if (btnEl) {
+        btnEl.classList.add('active');
+    } else {
+        // 若未直接传入按钮元素，根据 catId 自动查找高亮
+        const targetBtn = document.querySelector(`.category-pill[onclick*="'${catId}'"]`);
+        if (targetBtn) targetBtn.classList.add('active');
+    }
 
-    const allClusters = state.currentClustersData || [];
+    const pool = (state.allClustersData && state.allClustersData.length > 0)
+        ? state.allClustersData
+        : (state.currentClustersData || []);
+
     if (catId === 'all') {
-        renderClusters(allClusters);
+        renderClusters(pool);
     } else {
         const catNameMap = {
             'domestic': '国内',
@@ -331,12 +341,13 @@ export function filterByDynamicCategory(catId, btnEl) {
             'livelihood': '民生'
         };
         const targetBadge = catNameMap[catId] || '';
-        const filtered = allClusters.filter(c => 
+        const filtered = pool.filter(c => 
             c.category === catId || 
             c.badge === targetBadge || 
             c.badge === catId || 
             c.cluster_id === catId
         );
-        renderClusters(filtered.length > 0 ? filtered : allClusters);
+        // 若有精准匹配项则呈现；若该分类当前批次较少，优先展示匹配项，保证绝不呈现空白
+        renderClusters(filtered.length > 0 ? filtered : pool);
     }
 }

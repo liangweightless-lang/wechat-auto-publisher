@@ -9,6 +9,7 @@ export const state = {
     
     // 当前分类下的聚类数据
     currentClustersData: [],
+    allClustersData: [],
     
     // 前端极速秒开缓存 (Key: category -> Value: clusters)
     clientClustersCache: new Map(),
