@@ -1,3 +1,4 @@
+from core.prompt_manager import PromptManager
 import os
 import json
 import re
@@ -98,8 +99,12 @@ class AIWriter:
         historical_dossier = self.retriever.format_for_prompt(historical_docs)
         yield {"type": "status", "data": f"战史检索完成，已提取 {len(historical_docs)} 份底层战史与军械溯源档案。"}
 
-        # 2. 构建 Prompt
-        user_prompt = self.USER_PROMPT_TEMPLATE.format(
+        # 2. 构建 Prompt (从 PromptManager 动态获取最新配置)
+        prompts = PromptManager.get_prompts()
+        system_prompt = prompts.get("system_prompt", self.SYSTEM_PROMPT)
+        user_template = prompts.get("user_prompt_template", self.USER_PROMPT_TEMPLATE)
+
+        user_prompt = user_template.format(
             raw_content=raw_content[:8000],
             historical_dossier=historical_dossier,
             user_focus=user_focus or "全面结合历史材料，讲透双方为什么干起来的前因后果，并深扒双方动用武器的幕后国家技术血统与军工利益链。"
@@ -113,7 +118,7 @@ class AIWriter:
         payload = {
             "model": self.model,
             "messages": [
-                {"role": "system", "content": self.SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
             "temperature": 0.6,

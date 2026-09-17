@@ -78,24 +78,31 @@ function renderTopics(topics) {
     const listEl = document.getElementById("mobileHotList");
     if (!listEl) return;
     listEl.innerHTML = "";
-    topics.slice(0, 6).forEach((t, idx) => {
+    topics.slice(0, 8).forEach((t, idx) => {
         const item = document.createElement("div");
         item.className = "topic-row-item";
         item.onclick = () => selectTopic(t.title);
 
         const sourceName = t.source || "权威防务信源";
         const jumpUrl = t.url || ("https://www.toutiao.com/search?keyword=" + encodeURIComponent(t.title));
+        const isOverseas = !!t.is_overseas;
+        const badgeClass = isOverseas ? "topic-badge-overseas" : "topic-badge-tag";
+        const badgeIcon = isOverseas ? "🌐" : "📰";
+        const pubTime = t.pub_time || "今日最新";
 
         let summaryHtml = "";
         if (t.summary) {
-            summaryHtml = "<div class=\"topic-abstract\">" + t.summary + "</div>";
+            summaryHtml = `<div class="topic-abstract">${t.summary}</div>`;
         }
 
         item.innerHTML = `
             <div class="topic-rank-num">${idx + 1}</div>
             <div class="topic-main-content">
                 <div class="topic-top-meta">
-                    <span class="topic-badge-tag">📰 ${sourceName}</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="${badgeClass}">${badgeIcon} ${sourceName}</span>
+                        <span class="topic-time-tag">🕒 ${pubTime}</span>
+                    </div>
                     <a href="${jumpUrl}" target="_blank" rel="noopener noreferrer" class="topic-source-jump" onclick="event.stopPropagation()" title="在浏览器打开新闻出处">
                         <span>出处原文</span>
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
@@ -365,4 +372,104 @@ function showToast(msg, type = 'info') {
     setTimeout(() => {
         toast.className = '';
     }, 3200);
+}
+
+// 11. 隐藏入口：连击标题与快捷键调出 Prompt 配置台
+let titleClickCount = 0;
+let titleClickTimer = null;
+
+function handleTitleClick() {
+    titleClickCount++;
+    if (titleClickTimer) clearTimeout(titleClickTimer);
+    if (titleClickCount >= 3) {
+        titleClickCount = 0;
+        openPromptModal();
+        showToast("🔓 已进入智库核心 Prompt 配置中枢");
+        return;
+    }
+    titleClickTimer = setTimeout(() => {
+        titleClickCount = 0;
+    }, 700);
+}
+
+document.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "p" || e.key === "P")) {
+        e.preventDefault();
+        openPromptModal();
+    }
+});
+
+async function openPromptModal() {
+    const modal = document.getElementById("promptModal");
+    const sysInput = document.getElementById("systemPromptInput");
+    const userInput = document.getElementById("userTemplateInput");
+
+    if (!modal) return;
+    modal.classList.add("active");
+
+    try {
+        const resp = await fetch("/api/prompts");
+        const data = await resp.json();
+        if (data.code === 200) {
+            if (sysInput) sysInput.value = data.system_prompt || "";
+            if (userInput) userInput.value = data.user_prompt_template || "";
+        }
+    } catch (e) {
+        showToast("拉取Prompt配置失败: " + e.message, "error");
+    }
+}
+
+function closePromptModal() {
+    const modal = document.getElementById("promptModal");
+    if (modal) modal.classList.remove("active");
+}
+
+async function savePromptConfig() {
+    const sysInput = document.getElementById("systemPromptInput");
+    const userInput = document.getElementById("userTemplateInput");
+
+    const system_prompt = sysInput ? sysInput.value.trim() : "";
+    const user_prompt_template = userInput ? userInput.value.trim() : "";
+
+    if (!system_prompt || !user_prompt_template) {
+        showToast("提示词内容不能为空", "warning");
+        return;
+    }
+
+    try {
+        const resp = await fetch("/api/prompts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ system_prompt, user_prompt_template })
+        });
+        const res = await resp.json();
+        if (res.code === 200) {
+            showToast("✅ Prompt配置已成功保存并立即生效！");
+            closePromptModal();
+        } else {
+            showToast("保存失败: " + res.message, "error");
+        }
+    } catch (e) {
+        showToast("通信异常: " + e.message, "error");
+    }
+}
+
+async function resetPromptConfig() {
+    if (!confirm("确定要恢复官方智库预设的 System Prompt 和 User Template 吗？")) {
+        return;
+    }
+
+    try {
+        const resp = await fetch("/api/prompts/reset", { method: "POST" });
+        const res = await resp.json();
+        if (res.code === 200) {
+            const sysInput = document.getElementById("systemPromptInput");
+            const userInput = document.getElementById("userTemplateInput");
+            if (sysInput) sysInput.value = res.system_prompt || "";
+            if (userInput) userInput.value = res.user_prompt_template || "";
+            showToast("🔄 已恢复官方智库预设提示词！");
+        }
+    } catch (e) {
+        showToast("重置失败: " + e.message, "error");
+    }
 }

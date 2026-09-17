@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>局势洞见 · 微信公众号创作工作台</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=2.5">
 </head>
 <body>
 
@@ -13,7 +13,7 @@
         <div class="header-brand">
             <div class="brand-logo">局</div>
             <div>
-                <div class="brand-text">局势洞见</div>
+                <div class="brand-text" onclick="handleTitleClick()" title="连续点击3次开启Prompt核心配置" style="cursor: pointer;">局势洞见</div>
             </div>
         </div>
         <div class="header-actions">
@@ -192,9 +192,52 @@
         </div>
     </div>
 
+
+    <!-- 隐秘 Prompt 调控入口 (也可连击标题3次触发) -->
+    <button class="hidden-prompt-btn" onclick="openPromptModal()" title="智库核心 Prompt 控制台 (或连击标题3次)">⚙️</button>
+
+    <!-- 🧠 智库核心推演 Prompt 调试与配置中枢 (隐藏控制台) -->
+    <div class="prompt-mask" id="promptModal">
+        <div class="prompt-box">
+            <div class="prompt-header">
+                <div class="prompt-title">
+                    <span>🛠️ 智库推演 Prompt 核心配置台</span>
+                    <span class="stepper-badge">热载入生效</span>
+                </div>
+                <button class="prompt-close-btn" onclick="closePromptModal()">✕</button>
+            </div>
+
+            <div class="prompt-body">
+                <div class="prompt-section">
+                    <label class="prompt-label">
+                        <span>【System Prompt 首席专家人设、读者爽点五大铁律与决战兵器谱】</span>
+                        <span style="font-size: 11px; color: var(--text-muted);">定义AI首席防务战略作家人设、战史深潜与政治风控底线</span>
+                    </label>
+                    <textarea class="prompt-textarea" id="systemPromptInput" rows="12" spellcheck="false"></textarea>
+                </div>
+
+                <div class="prompt-section" style="margin-top: 14px;">
+                    <label class="prompt-label">
+                        <span>【User Prompt 结构化模板 (支持历史底座与用户焦点注入)】</span>
+                        <span style="font-size: 11px; color: var(--text-muted);">变量支持：{raw_content}, {historical_dossier}, {user_focus}</span>
+                    </label>
+                    <textarea class="prompt-textarea" id="userTemplateInput" rows="6" spellcheck="false"></textarea>
+                </div>
+            </div>
+
+            <div class="prompt-footer">
+                <button class="btn-prompt-reset" onclick="resetPromptConfig()">🔄 恢复官方智库预设</button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-prompt-cancel" onclick="closePromptModal()">取消</button>
+                    <button class="btn-prompt-save" onclick="savePromptConfig()">💾 保存并立即生效</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 悬浮 Toast -->
     <div id="toast"></div>
 
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/app.js?v=2.5"></script>
 </body>
 </html>

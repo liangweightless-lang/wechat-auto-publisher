@@ -17,7 +17,7 @@ from http.server import SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 from config.settings import settings, logger
-from core import WeChatClient, ContentParser, AIWriter, WeChatFormatter, CoverGenerator, ImageService, DefenseCrawler
+from core import PromptManager, WeChatClient, ContentParser, AIWriter, WeChatFormatter, CoverGenerator, ImageService, DefenseCrawler
 from notify import Notifier
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -88,6 +88,12 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                 self._send_json({"code": 500, "message": str(e)})
             return
 
+        # 4.1 [API] 获取智库提示词配置: GET /api/prompts
+        if path == "/api/prompts":
+            prompts = PromptManager.get_prompts()
+            self._send_json({"code": 200, **prompts})
+            return
+
         # 4. [API] 健康检查: GET /api/health
         if path == "/api/health":
             self._send_json({
@@ -112,6 +118,17 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
         # 1.1 [API] 同步模式: POST /api/generate
         if path == "/api/generate":
             self._handle_generate()
+            return
+
+        # 3. [API] 恢复默认提示词: POST /api/prompts/reset
+        if path == "/api/prompts/reset":
+            res = PromptManager.reset_prompts()
+            self._send_json({"code": 200, "message": "已恢复智库默认提示词", **res})
+            return
+
+        # 4. [API] 保存修改后的提示词: POST /api/prompts
+        if path == "/api/prompts":
+            self._handle_save_prompts()
             return
 
         # 2. [API] 一键推送草稿箱: POST /api/publish
@@ -353,6 +370,25 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
 
         except Exception as e:
             logger.error(f"处理生成请求失败: {e}", exc_info=True)
+            self._send_json({"code": 500, "message": str(e)})
+
+    def _handle_save_prompts(self):
+        """处理提示词更新保存"""
+        try:
+            content_len = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_len).decode("utf-8")
+            data = json.loads(body)
+            sys_p = data.get("system_prompt", "")
+            user_p = data.get("user_prompt_template", "")
+
+            if not sys_p or not user_p:
+                self._send_json({"code": 400, "message": "提示词内容不能为空"})
+                return
+
+            PromptManager.save_prompts(sys_p, user_p)
+            self._send_json({"code": 200, "message": "智库提示词配置已成功保存并立即生效"})
+        except Exception as e:
+            logger.error(f"保存提示词失败: {e}")
             self._send_json({"code": 500, "message": str(e)})
 
     def _handle_publish(self):

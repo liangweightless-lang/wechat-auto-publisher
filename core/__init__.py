@@ -19,3 +19,5 @@ __all__ = [
     "DefenseCrawler",
     "HistoricalRetriever"
 ]
+
+from .prompt_manager import PromptManager
