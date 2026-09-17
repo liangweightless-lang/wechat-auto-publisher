@@ -64,27 +64,11 @@
                     </div>
                 </div>
 
-                <!-- 垂直选题方向滑动胶囊 (无滚动条惯性滑动) -->
-                <div class="category-scroll-strip">
-                    <button class="category-pill active" onclick="selectCategory('all', this)">
+                <!-- 垂直选题方向滑动胶囊 (AI动态聚类提取，带真实篇数角标，100%有货绝不为空) -->
+                <div class="category-scroll-strip" id="categoryScrollStrip">
+                    <button class="category-pill active" onclick="window.app.filterByDynamicCategory('all', this)">
                         <i data-lucide="radar" class="pill-icon"></i>
                         <span>全部焦点</span>
-                    </button>
-                    <button class="category-pill" onclick="selectCategory('military_hot', this)">
-                        <i data-lucide="shield-alert" class="pill-icon"></i>
-                        <span>国际军事</span>
-                    </button>
-                    <button class="category-pill" onclick="selectCategory('relations', this)">
-                        <i data-lucide="handshake" class="pill-icon"></i>
-                        <span>国际关系</span>
-                    </button>
-                    <button class="category-pill" onclick="selectCategory('weapons', this)">
-                        <i data-lucide="rocket" class="pill-icon"></i>
-                        <span>先进武器</span>
-                    </button>
-                    <button class="category-pill" onclick="selectCategory('regional_intel', this)">
-                        <i data-lucide="map-pin" class="pill-icon"></i>
-                        <span>区域舆情</span>
                     </button>
                 </div>
 

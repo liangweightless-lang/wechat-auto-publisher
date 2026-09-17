@@ -88,6 +88,10 @@ export async function fetchAndRenderTopics(cat = 'all', forceRefresh = false) {
                 syncTimeEl.innerHTML = `<i data-lucide="clock" style="width: 11px; height: 11px;"></i> <span>上次更新：${nowStr} · 自动同步</span>`;
             }
 
+            if (data.dynamic_categories && data.dynamic_categories.length > 0) {
+                state.dynamicCategories = data.dynamic_categories;
+                renderDynamicCategories(data.dynamic_categories, cat);
+            }
             renderClusters(data.clusters);
             if (forceRefresh) {
                 showToast('已获取全网最新一手防务情报与官方通报！', 'success');
@@ -246,5 +250,37 @@ export async function expandOfficialSources(clusterId, event) {
     } finally {
         refreshIcons();
         setTimeout(() => { if (btn) btn.disabled = false; }, 3000);
+    }
+}
+
+export function renderDynamicCategories(categories, activeId = 'all') {
+    const stripEl = document.getElementById('categoryScrollStrip');
+    if (!stripEl || !Array.isArray(categories) || categories.length === 0) return;
+
+    stripEl.innerHTML = categories.map(cat => `
+        <button class="category-pill ${cat.id === activeId ? 'active' : ''}" 
+                onclick="window.app.filterByDynamicCategory('${cat.id}', this)">
+            ${cat.id === 'all' ? '<i data-lucide="radar" class="pill-icon"></i>' : ''}
+            <span>${cat.name}</span>
+            <span class="cat-pill-count">${cat.count}</span>
+        </button>
+    `).join('');
+    refreshIcons();
+}
+
+export function filterByDynamicCategory(catId, btnEl) {
+    state.currentCategory = catId;
+    document.querySelectorAll('.category-pill').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+
+    const allClusters = state.currentClustersData || [];
+    if (catId === 'all') {
+        renderClusters(allClusters);
+    } else if (catId === 'singles') {
+        const singles = allClusters.filter(c => (c.topic_count || (c.items ? c.items.length : 1)) < 2);
+        renderClusters(singles);
+    } else {
+        const filtered = allClusters.filter(c => c.cluster_id === catId);
+        renderClusters(filtered);
     }
 }

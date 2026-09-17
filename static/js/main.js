@@ -3,7 +3,7 @@ import { state } from './store/state.js';
 import { refreshIcons } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 import { initTheme, toggleTheme } from './modules/theme/themeManager.js';
-import { fetchAndRenderTopics, toggleCluster, expandOfficialSources } from './modules/topics/topicCards.js';
+import { fetchAndRenderTopics, toggleCluster, expandOfficialSources, filterByDynamicCategory, renderDynamicCategories } from './modules/topics/topicCards.js';
 import { toggleSelectNews, selectAllInCluster, selectTopic, updateSelectedUI } from './modules/topics/topicSelector.js';
 import { triggerMobileGenerate, toggleThinking } from './modules/generator/streamHandler.js';
 import { switchPlatform, copyActiveContent } from './modules/matrix/matrixView.js';
@@ -66,10 +66,7 @@ export function switchMainTab(tabName) {
 
 // 分类切换
 export function selectCategory(cat, el) {
-    state.currentCategory = cat;
-    document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
-    if (el) el.classList.add('active');
-    fetchAndRenderTopics(cat, false);
+    filterByDynamicCategory(cat, el);
 }
 
 // 刷新情报
@@ -171,6 +168,7 @@ window.app = {
     closePromptDrawer,
     switchMainTab,
     selectCategory,
+    filterByDynamicCategory,
     refreshCurrentFeed,
     toggleCluster,
     toggleSelectNews,
