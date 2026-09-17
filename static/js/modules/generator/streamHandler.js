@@ -193,7 +193,31 @@ export async function triggerMobileGenerate() {
                 } else if (eventType === 'error') {
                     showToast(dataObj.message || '生成中断', 'error');
                     if (statusMsg) {
-                        statusMsg.innerHTML = `<span style="color: #ef4444; font-weight: 600;">推演异常: ${dataObj.message}</span> <button onclick="window.app.closeProgressModal()" style="margin-left: 8px; padding: 2px 10px; border-radius: 4px; background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 11px; cursor: pointer;">关闭返回</button>`;
+                        const isBalanceError = (dataObj.message && (dataObj.message.includes('402') || dataObj.message.includes('余额') || dataObj.message.includes('insufficient')));
+                        statusMsg.innerHTML = `
+                            <div style="padding: 12px; border-radius: 10px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); text-align: left;">
+                                <div style="color: #ef4444; font-weight: 600; font-size: 13px; margin-bottom: 6px;">
+                                    ⚠️ 推演中断: ${dataObj.message}
+                                </div>
+                                ${isBalanceError ? `
+                                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(239, 68, 68, 0.2); font-size: 12px; color: var(--text-muted);">
+                                    💡 <b>当前平台余额不足</b>：建议切换至<b>智谱 GLM-4-Flash</b> (官方永久免费，不花一分钱)。
+                                    <div style="margin-top: 8px; display: flex; gap: 8px;">
+                                        <button onclick="window.app.closeProgressModal(); window.app.openBottomSheet('modelSettingsSheet');" style="padding: 6px 14px; border-radius: 6px; background: #10b981; color: #ffffff; border: none; font-size: 12px; font-weight: 700; cursor: pointer;">
+                                            ⚙️ 立即打开配置切换免费模型
+                                        </button>
+                                        <button onclick="window.app.closeProgressModal()" style="padding: 6px 12px; border-radius: 6px; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); font-size: 12px; cursor: pointer;">
+                                            关闭
+                                        </button>
+                                    </div>
+                                </div>
+                                ` : `
+                                <div style="margin-top: 6px;">
+                                    <button onclick="window.app.closeProgressModal()" style="padding: 4px 12px; border-radius: 6px; background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 12px; cursor: pointer;">关闭返回</button>
+                                </div>
+                                `}
+                            </div>
+                        `;
                     }
                     return;
                 }
