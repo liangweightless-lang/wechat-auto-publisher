@@ -207,7 +207,9 @@ class WeChatFormatter:
         cls,
         markdown_text: str,
         theme_name: str = "think_tank",
-        author: str = "局势洞见研判组"
+        author: str = "局势洞见研判组",
+        images: list = None,
+        sources: list = None
     ) -> str:
         """
         将标准 Markdown 转换为内联 CSS 样式的微信图文 HTML
@@ -336,6 +338,63 @@ class WeChatFormatter:
         # 12. 分割线
         styled_html = re.sub(r'<hr\s*/?>', f'<hr style="{style_hr}" />', styled_html)
 
+        # 12.1 自动注入正文双图 (图一: 现场实录装备大片, 图二: 战术态势示意图)
+        if images and len(images) > 0:
+            img1 = images[0]
+            img1_url = img1.get('url', img1.get('path', ''))
+            img1_cap = img1.get('caption', '战区一线装备部署与交锋实录')
+            img1_html = f'''
+            <section style="margin: 26px auto; text-align: center; max-width: 100%;">
+                <div style="border-radius: 6px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.06); border: 1px solid {theme['border']};">
+                    <img src="{img1_url}" style="width: 100%; display: block; margin: 0 auto;" />
+                </div>
+                <p style="font-size: 12.5px; color: {theme['text_sub']}; margin: 8px 0 0 0; text-align: center; letter-spacing: 0.5px;">
+                    ▲ {img1_cap}
+                </p>
+            </section>
+            '''
+            # 插入在首个章节结束处
+            match_part1 = re.search(r'(<section style="display: flex;.*?</h2>.*?</p>)', styled_html, re.DOTALL)
+            if match_part1:
+                end_pos = match_part1.end()
+                styled_html = styled_html[:end_pos] + img1_html + styled_html[end_pos:]
+            else:
+                styled_html = img1_html + styled_html
+
+            if len(images) > 1:
+                img2 = images[1]
+                img2_url = img2.get('url', img2.get('path', ''))
+                img2_cap = img2.get('caption', '战术态势推演：关键海域防空雷达盲区与突防弹道示意')
+                img2_html = f'''
+                <section style="margin: 28px auto; text-align: center; max-width: 100%;">
+                    <div style="border-radius: 6px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.06); border: 1px solid {theme['border']};">
+                        <img src="{img2_url}" style="width: 100%; display: block; margin: 0 auto;" />
+                    </div>
+                    <p style="font-size: 12.5px; color: {theme['text_sub']}; margin: 8px 0 0 0; text-align: center; letter-spacing: 0.5px; font-weight: 500;">
+                        ▲ {img2_cap}
+                    </p>
+                </section>
+                '''
+                styled_html = styled_html + img2_html
+
+        # 12.2 自动生成真实事实溯源与信源附录
+        sources_html = ""
+        if sources and len(sources) > 0:
+            lis = "".join([f"<li style='margin-bottom: 4px;'>{s}</li>" for s in sources])
+            sources_html = f'''
+            <section style="margin: 32px 0 16px 0; padding: 14px 18px; background: {theme['bg_card']}; border: 1px solid {theme['border']}; border-left: 3.5px solid {theme['primary']}; border-radius: 6px; font-size: 12px; color: {theme['text_sub']}; line-height: 1.7;">
+                <div style="font-weight: 700; color: {theme['primary']}; margin-bottom: 6px; font-size: 12.5px;">
+                    📚 事实溯源与权威公开参考信源
+                </div>
+                <ul style="margin: 0; padding-left: 18px; color: {theme['text_sub']};">
+                    {lis}
+                </ul>
+                <div style="font-size: 11px; color: #94a3b8; margin-top: 6px; border-top: 1px dashed {theme['border']}; padding-top: 5px;">
+                    * 声明：本文依据上述公开一手战报与官方通报客观研判，文责自负，仅供交流。
+                </div>
+            </section>
+            '''
+
         # 13. 组装导读与页尾
         lead_html = ""
         if lead_content:
@@ -361,9 +420,9 @@ class WeChatFormatter:
         </section>
         """
 
-        return f"""<section style="{style_container}">{lead_html}{styled_html}{footer_html}</section>"""
+        return f"""<section style="{style_container}">{lead_html}{styled_html}{sources_html}{footer_html}</section>"""
 
     @classmethod
-    def format_markdown(cls, markdown_text: str, theme_name: str = "think_tank", author: str = "局势洞见研判组") -> str:
+    def format_markdown(cls, markdown_text: str, theme_name: str = "think_tank", author: str = "局势洞见研判组", images: list = None, sources: list = None) -> str:
         """别名与快捷方法"""
-        return cls.format_to_wechat_html(markdown_text, theme_name=theme_name, author=author)
+        return cls.format_to_wechat_html(markdown_text, theme_name=theme_name, author=author, images=images, sources=sources)

@@ -264,7 +264,26 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             theme_key = data.get("theme", "think_tank")
             author = data.get("author", "局势洞见研判组")
 
-            html = WeChatFormatter.format_to_wechat_html(md_text, theme_name=theme_key, author=author)
+            article_images = []
+            if CURRENT_CACHE.get("cover_image"):
+                cov = CURRENT_CACHE["cover_image"]
+                rel_url = "/" + str(Path(cov).relative_to(BASE_DIR) if BASE_DIR in Path(cov).parents else cov)
+                article_images.append({"url": rel_url, "caption": "▲ 战区现场实录与核心交锋装备态势"})
+            if (BASE_DIR / "assets" / "tactical_situation.jpg").exists():
+                article_images.append({"url": "/assets/tactical_situation.jpg", "caption": "▲ 战术态势推演：关键海域防空雷达探测盲区与突防弹道示意"})
+
+            sources_list = CURRENT_CACHE.get("sources_list") or [
+                f"防务官方通报与公开战报研判池 ({datetime.now().strftime('%Y-%m-%d')})",
+                "全球海事安全通报与雷达侦测遥感情报"
+            ]
+
+            html = WeChatFormatter.format_to_wechat_html(
+                md_text,
+                theme_name=theme_key,
+                author=author,
+                images=article_images,
+                sources=sources_list
+            )
             CURRENT_CACHE["html_content"] = html
             CURRENT_CACHE["theme"] = theme_key
 
@@ -417,25 +436,68 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
 
             send_sse("status", {"message": f"长文生成完毕，正在根据 [{image_style}] 风格生成视觉配图与封面..."})
 
-            # 配图与多版式封面生成
+            # 1. 自动生成正文双图 (图一: 场景实录大片, 图二: 战术态势示意图) 与封面
             try:
-                img_path = ImageService.generate_image_by_flux(prompt=title, style_key=image_style)
+                send_sse("status", {"message": f"长文初稿就绪，正在生成场景实录大片与战术态势示意图..."})
+                img1_path = ImageService.generate_image_by_flux(prompt=title, style_key=image_style)
                 cover_path = CoverGenerator.crop_to_wechat_ratio(
-                    img_path,
+                    img1_path,
                     title=title,
                     category=topic[:12] if topic else "战略研判",
                     style="magazine"
                 )
             except Exception as e_img:
-                logger.warning(f"配图生成异常，启用保底封面: {e_img}")
+                logger.warning(f"实景大片生成异常: {e_img}")
                 cover_path = str(BASE_DIR / "assets" / "article_cover.jpg")
+                img1_path = cover_path
 
-            # 微信公众号主题排版
+            # 图二: 战术态势推演示意图 (带有战术雷达波与坐标标注)
+            try:
+                img2_path = ImageService.generate_tactical_infographic(
+                    title=title,
+                    label="2026 多波次攻防推演与雷达盲区示意",
+                    output_path="assets/tactical_situation.jpg"
+                )
+            except Exception as e_tac:
+                logger.warning(f"战术态势图合成异常: {e_tac}")
+                img2_path = ""
+
+            # 构造内嵌图片列表 (本地相对路径或 CDN)
+            article_images = []
+            if img1_path:
+                article_images.append({
+                    "url": "/" + str(Path(img1_path).relative_to(BASE_DIR) if BASE_DIR in Path(img1_path).parents else img1_path),
+                    "caption": f"▲ 战区现场实录与核心交锋装备态势 ({image_style})"
+                })
+            if img2_path:
+                article_images.append({
+                    "url": "/" + str(Path(img2_path).relative_to(BASE_DIR) if BASE_DIR in Path(img2_path).parents else img2_path),
+                    "caption": "▲ 战术态势推演：关键海域防空雷达探测盲区与突防弹道示意"
+                })
+
+            # 2. 构造信源清单 (事实核查附录)
+            sources_list = []
+            if selected_articles_str:
+                try:
+                    arts = json.loads(selected_articles_str)
+                    for a in arts:
+                        sources_list.append(f"{a.get('source', '权威媒体')}：{a.get('title', '')} ({a.get('pub_time', '实时')})")
+                except Exception:
+                    pass
+            if not sources_list:
+                sources_list = [
+                    f"防务官方通报与公开战报研判池 ({datetime.now().strftime('%Y-%m-%d')})",
+                    "全球海事安全通报与雷达侦测遥感情报"
+                ]
+
+            # 3. 微信公众号主题排版 (内嵌双图与信源附录)
             author_name = getattr(settings, "WECHAT_AUTHOR", "局势洞见研判组")
             html_content = WeChatFormatter.format_to_wechat_html(
                 markdown_text=md_content,
                 theme_name=theme_choice,
-                author=author_name
+                author=author_name,
+                images=article_images,
+                sources=sources_list
             )
 
             clean_text = "".join(md_content.split())
