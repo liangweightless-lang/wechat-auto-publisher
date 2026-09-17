@@ -1888,3 +1888,59 @@ body {
 .history-source-tag:active {
     background: rgba(59, 130, 246, 0.16);
 }
+
+/* =========================================================================
+   AI 智库策略总监对话工作台 (Strategy Dialog & Radar Pills)
+   ========================================================================= */
+.radar-kw-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--primary);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-weight: 500;
+}
+.strategy-msg-item {
+    display: flex;
+    gap: 8px;
+    max-width: 90%;
+}
+.strategy-msg-item.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+.strategy-msg-item.assistant {
+    align-self: flex-start;
+}
+.strategy-msg-item .msg-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--bg-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+.strategy-msg-item .msg-bubble {
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+.strategy-msg-item.user .msg-bubble {
+    background: var(--primary);
+    color: #fff;
+    border-bottom-right-radius: 2px;
+}
+.strategy-msg-item.assistant .msg-bubble {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 2px;
+}

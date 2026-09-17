@@ -30,6 +30,7 @@ from core.image_service import ImageService
 from core.matrix_adapter import MatrixAdapter
 from core.prompt_manager import PromptManager
 from core.db import DatabaseManager
+from core.strategy import StrategyManager, AIStrategist
 from core.wechat_api import WeChatClient
 from notify.notifier import Notifier
 
@@ -155,6 +156,12 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             })
             return
 
+        # 8.1 [API] 获取当前生效的智库策略与对话历史: GET /api/strategy/current
+        if path == "/api/strategy/current":
+            strategy = StrategyManager.load_strategy()
+            self._send_json({"code": 200, "strategy": strategy})
+            return
+
         # 9. [API] 健康检查
         if path == "/api/health":
             self._send_json({
@@ -170,6 +177,45 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
         path = parsed.path
+
+        # 0.01 [API] 与 AI 策略总监对话交互调优: POST /api/strategy/chat
+        if path == "/api/strategy/chat":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len).decode("utf-8")
+                data = json.loads(body)
+                msg = data.get("message", "").strip()
+                if not msg:
+                    self._send_json({"code": 400, "message": "消息内容不能为空"})
+                    return
+                res = AIStrategist.chat_tune(msg)
+                self._send_json({"code": 200, **res})
+            except Exception as e:
+                logger.error(f"策略对话异常: {e}")
+                self._send_json({"code": 500, "message": str(e)})
+            return
+
+        # 0.02 [API] 重置智库策略为默认状态: POST /api/strategy/reset
+        if path == "/api/strategy/reset":
+            StrategyManager.save_strategy(StrategyManager.DEFAULT_STRATEGY.copy())
+            self._send_json({"code": 200, "strategy": StrategyManager.DEFAULT_STRATEGY})
+            return
+
+        # 0.03 [API] AI 自动推演并刷新今日雷达词: POST /api/strategy/radar_refresh
+        if path == "/api/strategy/radar_refresh":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                titles = []
+                if content_len > 0:
+                    body = self.rfile.read(content_len).decode("utf-8")
+                    data = json.loads(body)
+                    titles = data.get("titles", [])
+                kws = AIStrategist.refresh_daily_radar(titles)
+                self._send_json({"code": 200, "active_keywords": kws})
+            except Exception as e:
+                logger.error(f"刷新雷达异常: {e}")
+                self._send_json({"code": 500, "message": str(e)})
+            return
 
         # 0.1 [API] 按需搜集政府与外交部官方公告: POST /api/topics/expand_sources
         if path == "/api/topics/expand_sources":

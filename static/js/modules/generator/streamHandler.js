@@ -1,0 +1,196 @@
+import { state } from '../../store/state.js';
+import { showToast } from '../../utils/toast.js';
+import { refreshIcons } from '../../utils/dom.js';
+
+export function toggleThinking() {
+    state.isThinkingCollapsed = !state.isThinkingCollapsed;
+    const box = document.getElementById('thinkingText');
+    const arrow = document.getElementById('thinkingArrow');
+    if (box) {
+        box.style.display = state.isThinkingCollapsed ? 'none' : 'block';
+    }
+    if (arrow) {
+        arrow.setAttribute('data-lucide', state.isThinkingCollapsed ? 'chevron-right' : 'chevron-down');
+        refreshIcons();
+    }
+}
+
+export function setStepActive(stepNum) {
+    for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById('step' + i);
+        if (!el) continue;
+        if (i < stepNum) {
+            el.className = 'step-chip done';
+        } else if (i === stepNum) {
+            el.className = 'step-chip active';
+        } else {
+            el.className = 'step-chip';
+        }
+    }
+}
+
+export async function triggerMobileGenerate() {
+    const topicInput = document.getElementById('mobileTopicInput');
+    const topic = topicInput ? topicInput.value.trim() : '';
+
+    if (!topic && !state.selectedFile) {
+        showToast('请先勾选热点情报或输入研判线索', 'warning');
+        return;
+    }
+
+    const genBtn = document.getElementById('mobileGenBtn');
+    const genSpinner = document.getElementById('mobileGenSpinner');
+    const genIcon = document.getElementById('mobileGenIcon');
+    const genText = document.getElementById('mobileGenText');
+    const modal = document.getElementById('progressModal');
+    const thinkingText = document.getElementById('thinkingText');
+    const streamText = document.getElementById('streamText');
+    const statusMsg = document.getElementById('streamStatusMsg');
+    const wordCountEl = document.getElementById('streamWordCount');
+    const timerLabel = document.getElementById('totalTimer');
+
+    // UI 状态重置
+    genBtn.disabled = true;
+    if (genSpinner) genSpinner.style.display = 'block';
+    if (genIcon) genIcon.style.display = 'none';
+    if (genText) genText.innerText = '战局推演与长文撰写中...';
+    modal.classList.add('active');
+
+    thinkingText.innerText = '';
+    streamText.innerText = '';
+    statusMsg.innerText = '正在启动智库推演引擎，组织多源战报...';
+    wordCountEl.innerText = '已生成 0 字';
+    setStepActive(1);
+
+    state.startTime = Date.now();
+    if (state.totalTimerInterval) clearInterval(state.totalTimerInterval);
+    state.totalTimerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+        if (timerLabel) timerLabel.innerText = `耗时 ${elapsed}s`;
+    }, 1000);
+
+    const formData = new FormData();
+    if (topic) formData.append('topic', topic);
+    if (state.selectedFile) formData.append('file', state.selectedFile);
+
+    if (state.selectedArticlesMap.size > 0) {
+        const articlesList = Array.from(state.selectedArticlesMap.values());
+        formData.append('selected_articles', JSON.stringify(articlesList));
+    }
+
+    const themeVal = document.getElementById('themeSelect') ? document.getElementById('themeSelect').value : 'think_tank';
+    const styleVal = document.getElementById('imageStyleSelect') ? document.getElementById('imageStyleSelect').value : 'photojournalism';
+    formData.append('theme', themeVal);
+    formData.append('image_style', styleVal);
+
+    try {
+        const response = await fetch('/api/generate/stream', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP Error ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split('\n\n');
+            buffer = events.pop();
+
+            for (const ev of events) {
+                if (!ev.trim()) continue;
+
+                let eventType = 'message';
+                let eventData = '';
+
+                const lines = ev.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('event: ')) {
+                        eventType = line.replace('event: ', '').trim();
+                    } else if (line.startsWith('data: ')) {
+                        eventData = line.replace('data: ', '').trim();
+                    }
+                }
+
+                if (!eventData) continue;
+                let dataObj = null;
+                try {
+                    dataObj = JSON.parse(eventData);
+                } catch (e) {
+                    continue;
+                }
+
+                if (eventType === 'status') {
+                    if (statusMsg) statusMsg.innerText = dataObj.message || '';
+                    if (dataObj.message && dataObj.message.includes('配图')) {
+                        setStepActive(4);
+                    } else if (dataObj.message && dataObj.message.includes('排版')) {
+                        setStepActive(5);
+                    }
+                } else if (eventType === 'think') {
+                    setStepActive(2);
+                    thinkingText.innerText += dataObj.text || '';
+                    thinkingText.scrollTop = thinkingText.scrollHeight;
+                } else if (eventType === 'content') {
+                    setStepActive(3);
+                    streamText.innerText += dataObj.text || '';
+                    streamText.scrollTop = streamText.scrollHeight;
+                    const charLen = streamText.innerText.replace(/\s+/g, '').length;
+                    wordCountEl.innerText = `已生成 ${charLen} 字`;
+                } else if (eventType === 'done') {
+                    setStepActive(5);
+                    handleGenerationDone(dataObj);
+                    return;
+                } else if (eventType === 'error') {
+                    showToast(dataObj.message || '生成中断', 'error');
+                    if (statusMsg) statusMsg.innerText = '错误: ' + dataObj.message;
+                    return;
+                }
+            }
+        }
+    } catch (e) {
+        showToast('生成请求异常: ' + e.message, 'error');
+        if (statusMsg) statusMsg.innerText = '推演中断: ' + e.message;
+    } finally {
+        genBtn.disabled = false;
+        if (genSpinner) genSpinner.style.display = 'none';
+        if (genIcon) genIcon.style.display = 'inline-block';
+        if (genText) genText.innerText = '开始深度研判并生成推文';
+        if (state.totalTimerInterval) clearInterval(state.totalTimerInterval);
+    }
+}
+
+export function handleGenerationDone(data) {
+    state.currentGeneratedData = data;
+
+    const mockTitle = document.getElementById('previewMockTitle');
+    if (mockTitle) mockTitle.innerText = data.title;
+
+    const previewBody = document.getElementById('previewHtmlBody');
+    if (previewBody) {
+        previewBody.innerHTML = data.wechat_html;
+    }
+
+    // 填充矩阵脚本
+    const dyEl = document.getElementById('matrixDouyinText');
+    if (dyEl) dyEl.innerText = data.douyin_script || '暂无矩阵脚本';
+
+    const xhsEl = document.getElementById('matrixXiaohongshuText');
+    if (xhsEl) xhsEl.innerText = data.xiaohongshu_note || '暂无小红书图文笔记';
+
+    // 隐藏进度弹层
+    const modal = document.getElementById('progressModal');
+    if (modal) modal.classList.remove('active');
+
+    // 自动切换到预览 Tab
+    window.app.switchMainTab('preview');
+    showToast('🎉 智库深度研报生成完毕！', 'success');
+}

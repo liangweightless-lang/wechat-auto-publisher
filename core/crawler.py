@@ -126,6 +126,15 @@ class DefenseCrawler:
         "外长", "太空武器", "遏制", "打击", "制裁", "香山论坛", "马赛克战", "南海"
     ]
 
+    @classmethod
+    def get_all_defense_keywords(cls):
+        try:
+            from core.strategy import StrategyManager
+            dynamic_kws = StrategyManager.get_active_keywords()
+        except Exception:
+            dynamic_kws = []
+        return list(set(cls.DEFENSE_KEYWORDS + dynamic_kws))
+
     EXCLUDE_KEYWORDS = [
         "ETF", "基金", "股票", "大盘", "A股", "理财", "银行", "涨停", "跌停",
         "董事会", "股东大会", "校招", "雷军", "房贷", "开盘", "财报"
@@ -305,7 +314,7 @@ class DefenseCrawler:
                     if cls._is_stale(link, pub_str):
                         continue
 
-                    is_defense = any(k in title for k in cls.DEFENSE_KEYWORDS)
+                    is_defense = any(k in title for k in cls.get_all_defense_keywords())
                     is_excluded = any(bad in title for bad in cls.EXCLUDE_KEYWORDS)
 
                     if is_defense and not is_excluded:
@@ -337,7 +346,7 @@ class DefenseCrawler:
                 item_url = r.get("Url", "")
                 hot_val = r.get("HotValue", "")
 
-                is_defense = any(k in title for k in cls.DEFENSE_KEYWORDS)
+                is_defense = any(k in title for k in cls.get_all_defense_keywords())
                 is_excluded = any(bad in title for bad in cls.EXCLUDE_KEYWORDS)
 
                 if is_defense and not is_excluded:
@@ -389,7 +398,7 @@ class DefenseCrawler:
                     if cls._is_stale(link, pub_str):
                         continue
 
-                    is_defense = any(k in title_raw for k in cls.DEFENSE_KEYWORDS) or any(
+                    is_defense = any(k in title_raw for k in cls.get_all_defense_keywords()) or any(
                         k.lower() in title_raw.lower() for k in [
                             "military", "missile", "drone", "attack", "war", "conflict",
                             "weapons", "nuclear", "navy", "army", "troops", "combat",
