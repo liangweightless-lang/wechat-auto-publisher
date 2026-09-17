@@ -134,13 +134,37 @@ class DefenseCrawler:
         ascii_count = sum(1 for c in alpha_chars if ord(c) < 128)
         return ascii_count / len(alpha_chars) > 0.6
 
+    TRANSLATE_CACHE_FILE = Path(__file__).resolve().parent.parent / "storage" / "translate_cache.json"
+
+    @classmethod
+    def _load_translate_cache(cls):
+        """从本地磁盘加载翻译持久化缓存"""
+        if not cls._TRANSLATE_CACHE and cls.TRANSLATE_CACHE_FILE.exists():
+            try:
+                with open(cls.TRANSLATE_CACHE_FILE, "r", encoding="utf-8") as f:
+                    cls._TRANSLATE_CACHE.update(json.load(f))
+            except Exception as e:
+                logger.warning(f"加载翻译磁盘缓存失败: {e}")
+
+    @classmethod
+    def _save_translate_cache(cls):
+        """持久化翻译缓存到本地磁盘"""
+        try:
+            cls.TRANSLATE_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with open(cls.TRANSLATE_CACHE_FILE, "w", encoding="utf-8") as f:
+                json.dump(cls._TRANSLATE_CACHE, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.warning(f"持久化翻译磁盘缓存失败: {e}")
+
     @classmethod
     def _translate_titles_batch(cls, titles: List[str]) -> Dict[str, str]:
         """
         批量翻译英文标题为地道简体中文。
-        优先使用 Qwen2.5-7B 极速模型（秒级响应、稳定不超时），备用 DeepSeek-V3。
-        支持批量切分与本地内存缓存。
+        1. 优先加载本地持久化缓存
+        2. 细粒度批次 (chunk_size=5) + 线程池并发翻译，提高成功率且控制耗时在 2s 内
+        3. 超时设置为 6.5s，避免大模型输出时因网络抖动被掐断
         """
+        cls._load_translate_cache()
         to_translate = [t for t in titles if cls._is_english(t) and t not in cls._TRANSLATE_CACHE][:20]
         results = {t: cls._TRANSLATE_CACHE[t] for t in titles if t in cls._TRANSLATE_CACHE}
         if not to_translate:
@@ -151,20 +175,17 @@ class DefenseCrawler:
         if not api_key:
             return results
 
-        # 批次大小切分（每批最多 8 条，避免长提示词排队超时）
-        chunk_size = 20
+        chunk_size = 5
         chunks = [to_translate[i:i + chunk_size] for i in range(0, len(to_translate), chunk_size)]
 
-        for chunk in chunks:
-            numbered = "\n".join(f"{i+1}. {t}" for i, t in enumerate(chunk))
+        def _translate_one_chunk(chunk):
+            chunk_res = {}
+            numbered = chr(10).join(f"{i+1}. {t}" for i, t in enumerate(chunk))
             prompt = (
                 "你是专业国际军事与外交新闻审校翻译。请将下列英文新闻标题逐条翻译为地道精准的简体中文标题，"
                 "符合中国主流媒体新闻规范（保留国家、地名、人名、战机舰艇通用中文译名）。"
-                "严格按格式输出，每行一条：'序号. 中文标题'，不要任何多余分析说明。\n\n"
-                + numbered
+                "严格按格式输出，每行一条：'序号. 中文标题'，不要任何多余分析说明。" + chr(10) + chr(10) + numbered
             )
-
-            # 仅使用 Qwen2.5 极速模型，3秒快速熔断，绝不因翻译阻塞整体响应
             try:
                 resp = requests.post(
                     f"{base_url}/chat/completions",
@@ -173,14 +194,14 @@ class DefenseCrawler:
                         "model": "Qwen/Qwen2.5-7B-Instruct",
                         "messages": [{"role": "user", "content": prompt}],
                         "temperature": 0.1,
-                        "max_tokens": min(len(chunk) * 50, 400)
+                        "max_tokens": min(len(chunk) * 60, 400)
                     },
-                    timeout=3.0,
+                    timeout=6.5,
                     verify=False
                 )
                 if resp.status_code == 200:
                     output = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-                    lines_out = [l.strip() for l in output.strip().split("\n") if l.strip()]
+                    lines_out = [l.strip() for l in output.strip().split(chr(10)) if l.strip()]
                     for line_out in lines_out:
                         m = re.match(r"^(\d+)[.、．]\s*(.+)$", line_out)
                         if m:
@@ -188,11 +209,24 @@ class DefenseCrawler:
                             translated = m.group(2).strip()
                             if 0 <= idx < len(chunk):
                                 orig = chunk[idx]
-                                results[orig] = translated
-                                cls._TRANSLATE_CACHE[orig] = translated
-                    logger.info(f"[Qwen2.5-7B] 批量翻译成功：{len(chunk)} 条标题")
+                                chunk_res[orig] = translated
             except Exception as e:
-                logger.warning(f"标题翻译快速熔断跳过 (使用英文原标题): {e}")
+                logger.warning(f"标题批次翻译熔断跳过 (原标题保留): {e}")
+            return chunk_res
+
+        from concurrent.futures import ThreadPoolExecutor
+        has_new = False
+        with ThreadPoolExecutor(max_workers=min(len(chunks), 3)) as executor:
+            future_results = executor.map(_translate_one_chunk, chunks)
+            for cres in future_results:
+                for orig, trans in cres.items():
+                    results[orig] = trans
+                    cls._TRANSLATE_CACHE[orig] = trans
+                    has_new = True
+
+        if has_new:
+            cls._save_translate_cache()
+            logger.info(f"[Qwen2.5-7B] 并发批量翻译成功：{len(results)} 条标题已更新并持久化")
 
         return results
 

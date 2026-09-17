@@ -164,7 +164,7 @@ export function renderClusters(clusters) {
                 <!-- 1. 顶部主标题栏 (左侧分类方形色块徽章 + 主标题，对标截图) -->
                 <div class="card-headline-row">
                     <span class="category-square-badge ${badgeClass}">${badgeText}</span>
-                    <h3 class="cluster-heading">${displayTitle}</h3>
+                    <h3 class="cluster-heading" title="${displayTitle}" data-full-title="${displayTitle}" onclick="window.app.showTitleBubble(event, this)">${displayTitle}</h3>
                 </div>
                 ${showSubPreview ? `<p class="cluster-sub-preview">${cluster.main_title}</p>` : ''}
 
@@ -233,8 +233,8 @@ export function renderSubNewsItems(clusterId, items) {
             <div class="sub-news-body">
                 <div class="sub-news-title">
                     ${isOfficial ? '<span class="official-badge-gold"><i data-lucide="shield-check" style="width: 10px; height: 10px;"></i>官方权威</span> ' : ''}
-                    <span class="sub-title-text">${item.title}</span>
-                    ${item.title_original ? `<div class="sub-news-original-title" style="font-size: 11px; color: #94a3b8; margin-top: 2px; font-style: italic; line-height: 1.3;"><span style="color: #64748b; font-weight: 600; font-style: normal; background: rgba(148, 163, 184, 0.12); padding: 1px 4px; border-radius: 3px; margin-right: 4px;">外文原文</span>${item.title_original}</div>` : ''}
+                    <span class="sub-title-text" title="${item.title}" data-full-title="${item.title}" onclick="window.app.showTitleBubble(event, this)">${item.title}</span>
+                    ${item.title_original && item.title_original !== item.title ? `<div class="sub-news-original-title" style="font-size: 11px; color: #94a3b8; margin-top: 2px; font-style: italic; line-height: 1.3;" title="${item.title_original}" data-full-title="${item.title_original}" onclick="window.app.showTitleBubble(event, this)"><span style="color: #64748b; font-weight: 600; font-style: normal; background: rgba(148, 163, 184, 0.12); padding: 1px 4px; border-radius: 3px; margin-right: 4px;">外文原文</span>${item.title_original}</div>` : ''}
                 </div>
                 <div class="sub-news-meta">
                     <div class="sub-meta-left">

@@ -2427,3 +2427,78 @@ body {
     background: rgba(14, 165, 233, 0.22);
     border-color: rgba(56, 189, 248, 0.45);
 }
+
+/* =========================================================================
+   过长标题气泡与紧凑规范 (支持最多2行截断 + 悬浮与移动端气泡)
+   ========================================================================= */
+.cluster-heading {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    word-break: break-word !important;
+    cursor: pointer !important;
+    transition: color 0.15s ease;
+}
+
+.cluster-heading:hover {
+    color: var(--primary) !important;
+}
+
+.sub-news-title .sub-title-text {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    word-break: break-word !important;
+    cursor: pointer !important;
+    transition: color 0.15s ease;
+}
+
+.sub-news-title .sub-title-text:hover {
+    color: var(--primary) !important;
+}
+
+/* 微型浮动气泡组件 (暗黑磨砂玻璃极简风格) */
+.title-floating-bubble {
+    position: fixed;
+    transform: translate(-50%, -100%);
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #f8fafc;
+    padding: 9px 13px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    line-height: 1.48;
+    max-width: min(420px, calc(100vw - 32px));
+    width: max-content;
+    box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.14);
+    z-index: 999999;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+    word-break: break-word;
+    white-space: normal;
+    text-align: left;
+}
+
+.title-floating-bubble::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: rgba(15, 23, 42, 0.94) transparent transparent transparent;
+}
+
+.title-floating-bubble.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -105%);
+}

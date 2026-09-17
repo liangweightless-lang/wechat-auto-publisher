@@ -327,14 +327,38 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             self.send_error(500, "Internal Server Error")
 
     def _handle_format_preview(self):
-        """实时将 Markdown 格式化为选定主题的微信 HTML"""
+        """实时将 Markdown 格式化为选定主题的微信 HTML (支持前端直传 + 内存缓存 + 历史库智能兜底)"""
         try:
             content_len = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(content_len).decode("utf-8")
-            data = json.loads(body)
-            md_text = data.get("markdown", "") or CURRENT_CACHE.get("markdown_content", "")
+            data = json.loads(body) if body else {}
+            
+            md_text = (data.get("markdown") or "").strip()
             theme_key = data.get("theme", "think_tank")
-            author = data.get("author", "局势洞见研判组")
+            author = data.get("author") or "局势洞见研判组"
+
+            # 1. 优先取前端提交的内容，并同步进 CURRENT_CACHE
+            if md_text:
+                CURRENT_CACHE["markdown_content"] = md_text
+                if data.get("title"):
+                    CURRENT_CACHE["title"] = data["title"]
+            else:
+                # 2. 其次取当前运行态内存缓存
+                md_text = (CURRENT_CACHE.get("markdown_content") or "").strip()
+
+            # 3. 若均为空（例如热重启后直接换肤），从 SQLite 调阅最新历史研报兜底
+            if not md_text:
+                recent_arts = DatabaseManager.get_recent_articles(limit=1)
+                if recent_arts and recent_arts[0].get("markdown_content"):
+                    md_text = recent_arts[0]["markdown_content"].strip()
+                    CURRENT_CACHE["markdown_content"] = md_text
+                    CURRENT_CACHE["title"] = recent_arts[0].get("title", "")
+                    if recent_arts[0].get("cover_image_path"):
+                        CURRENT_CACHE["cover_image"] = recent_arts[0]["cover_image_path"]
+
+            if not md_text:
+                self._send_json({"code": 400, "message": "当前暂无可用研报内容，请先在选题池中选择并生成推文"})
+                return
 
             article_images = []
             if CURRENT_CACHE.get("cover_image"):

@@ -114,6 +114,7 @@ export async function loadHistoryArticleDetail(id) {
         const data = await historyApi.getArticleById(id);
         if (data.code === 200 && data.article) {
             const art = data.article;
+            state.currentGeneratedData = art;
             const titleEl = document.getElementById('previewMockTitle');
             if (titleEl) titleEl.innerText = art.title;
 

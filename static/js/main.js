@@ -104,25 +104,66 @@ export function triggerMultiSelectGenerate() {
     triggerMobileGenerate();
 }
 
-// 快速换肤与重排
+// 标题微型气泡提示 (支持移动端轻触与桌面端悬浮)
+export function showTitleBubble(event, el) {
+    if (event) event.stopPropagation();
+    const fullText = (el.getAttribute('data-full-title') || el.getAttribute('title') || el.innerText || '').trim();
+    if (!fullText) return;
+
+    let bubble = document.getElementById('globalTitleBubble');
+    if (!bubble) {
+        bubble = document.createElement('div');
+        bubble.id = 'globalTitleBubble';
+        bubble.className = 'title-floating-bubble';
+        document.body.appendChild(bubble);
+    }
+
+    bubble.innerText = fullText;
+    const rect = el.getBoundingClientRect();
+    const bubbleTop = Math.max(12, rect.top - 10);
+    const bubbleLeft = Math.min(window.innerWidth - 18, Math.max(18, rect.left + rect.width / 2));
+
+    bubble.style.left = `${bubbleLeft}px`;
+    bubble.style.top = `${bubbleTop}px`;
+    bubble.classList.add('visible');
+
+    if (window._bubbleTimeout) clearTimeout(window._bubbleTimeout);
+    window._bubbleTimeout = setTimeout(() => {
+        bubble.classList.remove('visible');
+    }, 3200);
+}
+
+// 快速换肤与重排 (彻底防止格式残缺，支持传递完整 markdown 与 title)
 export async function switchThemeQuick(themeKey, btnEl) {
-    document.querySelectorAll('.theme-quick-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.theme-chip, .theme-quick-btn').forEach(b => b.classList.remove('active'));
     if (btnEl) btnEl.classList.add('active');
 
     const previewBody = document.getElementById('mobilePreviewContent');
-    if (!previewBody || !previewBody.innerHTML.trim()) {
+    const md = state.currentGeneratedData?.markdown_content || '';
+    const title = state.currentGeneratedData?.title || '';
+
+    if (!previewBody || (!previewBody.innerHTML.trim() && !md)) {
         showToast('请先生成文章后再切换视觉排版', 'warning');
         return;
     }
 
+    showToast('正在实时重新内联排版...', 'info');
+
     try {
-        const res = await publishApi.formatPreview(themeKey);
+        const res = await publishApi.formatPreview(themeKey, md, title);
         if (res && res.code === 200 && res.html) {
             previewBody.innerHTML = res.html;
-            showToast(`已切换为【${themeKey}】排版风格`, 'success');
+            if (state.currentGeneratedData) {
+                state.currentGeneratedData.html_content = res.html;
+                state.currentGeneratedData.wechat_html = res.html;
+                state.currentGeneratedData.theme = themeKey;
+            }
+            showToast(`已成功切换为【${themeKey}】排版风格`, 'success');
+        } else {
+            showToast(`换肤失败: ${res?.message || '内容格式异常'}`, 'error');
         }
     } catch (e) {
-        showToast('换肤失败', 'error');
+        showToast(`换肤异常: ${e.message}`, 'error');
     }
 }
 
@@ -185,6 +226,7 @@ window.app = {
     copyActiveContent,
     triggerMobilePublish,
     switchThemeQuick,
+    showTitleBubble,
     loadHistoryArticles,
     loadHistoryArticleDetail,
     showSourceNewsModal,
@@ -203,6 +245,7 @@ Object.assign(window, window.app);
 // 页面加载生命周期
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
+    document.addEventListener('click', () => { const b = document.getElementById('globalTitleBubble'); if (b) b.classList.remove('visible'); });
     refreshIcons();
     fetchAndRenderTopics('all', false);
     syncTodayRadarToHome();

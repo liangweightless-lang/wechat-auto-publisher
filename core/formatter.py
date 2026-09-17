@@ -364,7 +364,9 @@ class WeChatFormatter:
             </section>
             '''
             # 插入在首个章节结束处
-            match_part1 = re.search(r'(<section style="display: flex;.*?</h2>.*?</p>)', styled_html, re.DOTALL)
+            match_part1 = re.search(r'(<section style="display: flex; align-items: center;.*?</section>.*?</p>)', styled_html, re.DOTALL)
+            if not match_part1:
+                match_part1 = re.search(r'(<p style="[^"]*">.*?</p>)', styled_html, re.DOTALL)
             if match_part1:
                 end_pos = match_part1.end()
                 styled_html = styled_html[:end_pos] + img1_html + styled_html[end_pos:]
