@@ -654,13 +654,37 @@ class DefenseCrawler:
             "time": now,
             "data": clusters
         }
-        # 排序：1. 有官方权威信源的聚类排最前; 2. 条目数（热度）降序; 3. 时间新优先
-        def cluster_sort_key(c):
-            has_official = any(item.get("is_official", False) for item in c.get("items", []))
-            topic_count = c.get("topic_count", 1)
-            return (0 if has_official else 1, -topic_count)
+        # 科学多维加权智能排序：官方权威权重(100分) + 交叉篇数(15分/篇) + 策略雷达匹配(20分/命中) + 突发时效
+        def calculate_cluster_score(c):
+            items = c.get("items", [])
+            # 1. 官方权威度加权 (联合国/塔斯社/外交部等官方基准分)
+            has_official = any(item.get("is_official", False) for item in items)
+            score = 100 if has_official else 0
 
-        clusters.sort(key=cluster_sort_key)
+            # 2. 篇数与跨渠道聚合热度加权 (多源交叉印证大事件优先)
+            topic_count = c.get("topic_count", len(items))
+            score += min(topic_count * 15, 90)
+
+            # 3. 今日 AI 策略总监雷达词匹配加权 (用户关注重点自适应置顶)
+            try:
+                from core.strategy import StrategyManager
+                radar_kws = StrategyManager.get_active_keywords()
+                cluster_text = (c.get("cluster_name", "") + " " + c.get("main_title", "")).lower()
+                radar_hits = sum(1 for kw in radar_kws if kw.lower() in cluster_text)
+                score += min(radar_hits * 20, 60)
+            except Exception:
+                pass
+
+            # 4. 时效加分 (刚刚/数十分钟内发布的突发高权加分)
+            latest_time = str(c.get("latest_time", ""))
+            if "刚刚" in latest_time or "分钟" in latest_time:
+                score += 20
+            elif "小时" in latest_time:
+                score += 10
+
+            return score
+
+        clusters.sort(key=calculate_cluster_score, reverse=True)
         return clusters
 
     @classmethod

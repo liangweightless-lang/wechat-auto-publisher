@@ -78,6 +78,18 @@ export function refreshCurrentFeed() {
 }
 
 // 清空选题输入框
+export function handleMobileFile(input) {
+    if (input.files && input.files[0]) {
+        state.selectedFile = input.files[0];
+        const label = document.getElementById('mobileFileLabel');
+        if (label) {
+            label.innerText = `📎 ${state.selectedFile.name.substring(0, 10)}...`;
+            label.style.color = 'var(--primary)';
+        }
+        showToast(`📄 报告已挂载: ${state.selectedFile.name}`, 'success');
+    }
+}
+
 export function clearTopicInput() {
     const input = document.getElementById('mobileTopicInput');
     if (input) {
@@ -164,6 +176,7 @@ window.app = {
     toggleSelectNews,
     selectAllInCluster,
     selectTopic,
+    handleMobileFile,
     clearTopicInput,
     triggerMultiSelectGenerate,
     expandOfficialSources,

@@ -5,13 +5,18 @@ import { showToast } from '../../utils/toast.js';
 import { toggleSelectNews, selectAllInCluster } from './topicSelector.js';
 
 export function renderSkeletonLoading() {
-    let skeletons = '';
-    for (let i = 0; i < 3; i++) {
+    let skeletons = `
+    <div class="feed-loading-banner" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; font-size: 12.5px; color: var(--primary); background: rgba(37, 99, 235, 0.07); border: 1px dashed rgba(37, 99, 235, 0.25); border-radius: 8px; margin-bottom: 12px;">
+        <i data-lucide="loader-2" class="spin" style="width: 15px; height: 15px;"></i>
+        <span>正在跨网聚合联合国/塔斯社/外网官方战报并智能聚类排序...</span>
+    </div>
+    `;
+    for (let i = 0; i < 4; i++) {
         skeletons += `
-        <div class="feed-skeleton-card">
-            <div class="skeleton-line title shimmer"></div>
-            <div class="skeleton-line preview shimmer"></div>
-            <div class="skeleton-meta shimmer"></div>
+        <div class="feed-skeleton-card" style="margin-bottom: 10px; padding: 14px; background: var(--bg-card); border-radius: 10px; border: 1px solid var(--border);">
+            <div class="skeleton-line shimmer" style="height: 16px; width: 65%; margin-bottom: 8px; border-radius: 4px; background: var(--bg-hover);"></div>
+            <div class="skeleton-line shimmer" style="height: 13px; width: 90%; margin-bottom: 10px; border-radius: 4px; background: var(--bg-hover);"></div>
+            <div class="skeleton-meta shimmer" style="height: 12px; width: 40%; border-radius: 4px; background: var(--bg-hover);"></div>
         </div>`;
     }
     return skeletons;
@@ -19,17 +24,27 @@ export function renderSkeletonLoading() {
 
 export async function fetchAndRenderTopics(cat = 'all', forceRefresh = false) {
     const listEl = document.getElementById('mobileHotList');
-    if (!listEl) return;
+    const refreshBtn = document.getElementById('feedRefreshBtn');
+    const refreshIcon = document.getElementById('feedRefreshIcon');
 
-    // 优先加载客户端极速缓存
+    // 触发按钮 Loading 动效
+    if (refreshBtn) refreshBtn.disabled = true;
+    if (refreshIcon) refreshIcon.classList.add('spin');
+
+    // 若非强制刷新且本地有缓存，优先毫秒级加载缓存
     if (!forceRefresh && state.clientClustersCache.has(cat)) {
         const cached = state.clientClustersCache.get(cat);
         state.currentClustersData = cached;
         renderClusters(cached);
+        if (refreshBtn) refreshBtn.disabled = false;
+        if (refreshIcon) refreshIcon.classList.remove('spin');
         return;
     }
 
-    listEl.innerHTML = renderSkeletonLoading();
+    if (listEl) {
+        listEl.innerHTML = renderSkeletonLoading();
+        refreshIcons();
+    }
 
     try {
         const data = await topicsApi.fetchTopics(cat, true, forceRefresh);
@@ -45,19 +60,27 @@ export async function fetchAndRenderTopics(cat = 'all', forceRefresh = false) {
 
             renderClusters(data.clusters);
             if (forceRefresh) {
-                showToast('🔄 已获取全网最新防务情报与官方通报！', 'success');
+                showToast('🔄 已获取全网最新一手防务情报与官方通报！', 'success');
             }
         } else {
-            listEl.innerHTML = `
-                <div class="feed-empty-state">
-                    <i data-lucide="inbox" style="width: 22px; height: 22px; color: var(--text-light);"></i>
-                    <span>暂未检索到该分类情报，轻点右上角刷新重试</span>
-                </div>
-            `;
+            if (listEl) {
+                listEl.innerHTML = `
+                    <div class="feed-empty-state">
+                        <i data-lucide="inbox" style="width: 22px; height: 22px; color: var(--text-light);"></i>
+                        <span>暂未检索到该分类情报，轻点右上角刷新重试</span>
+                    </div>
+                `;
+            }
             refreshIcons();
         }
     } catch (e) {
-        listEl.innerHTML = `<div class="feed-empty-state" style="color: #ef4444;">拉取情报异常: ${e.message}</div>`;
+        if (listEl) {
+            listEl.innerHTML = `<div class="feed-empty-state" style="color: #ef4444;">拉取情报异常: ${e.message}</div>`;
+        }
+    } finally {
+        if (refreshBtn) refreshBtn.disabled = false;
+        if (refreshIcon) refreshIcon.classList.remove('spin');
+        refreshIcons();
     }
 }
 
