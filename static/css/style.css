@@ -1953,3 +1953,76 @@ body {
     border: 1px solid var(--border);
     border-bottom-left-radius: 2px;
 }
+
+/* =========================================================================
+   首页小字动态雷达盯防条 (Today Radar Strip)
+   ========================================================================= */
+.today-radar-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 10px;
+    margin: 6px 0 10px 0;
+    background: rgba(37, 99, 235, 0.04);
+    border: 1px solid rgba(37, 99, 235, 0.14);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.today-radar-bar:hover {
+    background: rgba(37, 99, 235, 0.08);
+    border-color: rgba(37, 99, 235, 0.25);
+}
+.today-radar-bar:active {
+    transform: scale(0.99);
+}
+.radar-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+}
+.radar-bar-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--primary);
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+}
+.today-radar-kw-list {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+.today-radar-kw-chip {
+    font-size: 10.5px;
+    color: var(--text);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    line-height: 1.25;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+.today-radar-kw-chip:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.radar-bar-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 10.5px;
+    color: var(--primary);
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+    opacity: 0.85;
+}

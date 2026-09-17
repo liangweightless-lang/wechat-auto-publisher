@@ -8,7 +8,7 @@ import { toggleSelectNews, selectAllInCluster, selectTopic, updateSelectedUI } f
 import { triggerMobileGenerate, toggleThinking } from './modules/generator/streamHandler.js';
 import { switchPlatform, copyActiveContent } from './modules/matrix/matrixView.js';
 import { openHistoryDrawer, closeHistoryDrawer, loadHistoryArticles, loadHistoryArticleDetail, showSourceNewsModal } from './modules/history/historyView.js';
-import { openStrategyDrawer, closeStrategyDrawer, loadStrategyData, sendStrategyTuneMessage, triggerAiRadarRefresh, resetStrategyToDefault } from './modules/strategy/strategyChat.js';
+import { openStrategyDrawer, closeStrategyDrawer, loadStrategyData, sendStrategyTuneMessage, triggerAiRadarRefresh, resetStrategyToDefault, syncTodayRadarToHome } from './modules/strategy/strategyChat.js';
 import { openPromptDrawer, closePromptDrawer, loadPromptConfig, savePrompts, resetPrompts } from './modules/prompt/promptConfig.js';
 import { publishApi } from './api/publishApi.js';
 
@@ -206,4 +206,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     refreshIcons();
     fetchAndRenderTopics('all', false);
+    syncTodayRadarToHome();
 });

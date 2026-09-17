@@ -111,7 +111,29 @@ export async function loadStrategyData() {
     }
 }
 
+export function updateHomeRadarBar(keywords) {
+    const container = document.getElementById('todayRadarKeywords');
+    if (!container || !Array.isArray(keywords) || keywords.length === 0) return;
+    container.innerHTML = keywords.slice(0, 6).map(kw => `
+        <span class="today-radar-kw-chip">${kw}</span>
+    `).join('');
+}
+
+export async function syncTodayRadarToHome() {
+    try {
+        const data = await strategyApi.getCurrentStrategy();
+        if (data && data.strategy && data.strategy.active_keywords) {
+            updateHomeRadarBar(data.strategy.active_keywords);
+        }
+    } catch (e) {
+        console.error("同步首页雷达词失败:", e);
+    }
+}
+
 function renderStrategyContent(strategy) {
+    if (strategy && strategy.active_keywords) {
+        updateHomeRadarBar(strategy.active_keywords);
+    }
     const radarContainer = document.getElementById('strategyActiveKeywords');
     if (radarContainer) {
         const kws = strategy.active_keywords || [];
