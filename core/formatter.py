@@ -212,3 +212,8 @@ class WeChatFormatter:
         </section>
         """
         return full_article_html
+
+    @classmethod
+    def format_markdown(cls, markdown_text: str, author: str = "局势洞见") -> str:
+        """别名方法"""
+        return cls.format_to_wechat_html(markdown_text=markdown_text, author=author)

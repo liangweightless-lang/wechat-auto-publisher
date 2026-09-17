@@ -191,3 +191,20 @@ class WeChatClient:
         draft_media_id = data.get("media_id", "")
         logger.info(f"🎉 文章已成功录入微信公众号草稿箱！Draft Media ID: {draft_media_id}")
         return draft_media_id
+
+    def upload_permanent_material(self, file_path: str, material_type: str = "image") -> str:
+        """别名兼容方法"""
+        return self.upload_thumb_material(file_path)
+
+    def add_draft(self, articles: list) -> str:
+        """别名兼容方法 (支持 articles 列表格式)"""
+        if not articles:
+            raise ValueError("articles 列表不能为空")
+        art = articles[0]
+        return self.create_draft(
+            title=art.get("title", "未命名"),
+            content_html=art.get("content", ""),
+            thumb_media_id=art.get("thumb_media_id", ""),
+            author=art.get("author", ""),
+            digest=art.get("digest", "")
+        )
