@@ -50,6 +50,7 @@ def init_db():
                     illustration_prompt TEXT,
                     wechat_media_id TEXT,
                     publish_status TEXT DEFAULT 'draft',
+                    source_news_json TEXT DEFAULT '[]',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
@@ -75,6 +76,12 @@ def init_db():
             conn.execute("CREATE INDEX IF NOT EXISTS idx_articles_created ON articles(created_at DESC);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_news_category ON news_pool(category);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_news_hash ON news_pool(url_hash);")
+
+        # 迁移旧版数据库 (幂等，字段不存在时才添加)
+        try:
+            conn.execute("ALTER TABLE articles ADD COLUMN source_news_json TEXT DEFAULT '[]'")
+        except Exception:
+            pass  # 字段已存在，忽略
 
         logger.info(f"SQLite 数据库初始化完成: {DB_PATH}")
     except Exception as e:
@@ -105,7 +112,8 @@ class DatabaseManager:
         illustration_path: str = "",
         illustration_prompt: str = "",
         wechat_media_id: str = "",
-        publish_status: str = "draft"
+        publish_status: str = "draft",
+        source_news_json: str = "[]"
     ) -> int:
         """保存或更新已生成的矩阵文章"""
         conn = get_db_connection()
@@ -117,8 +125,8 @@ class DatabaseManager:
                         article_hash, title, category, theme, author, lead,
                         markdown_content, wechat_html, douyin_script, xiaohongshu_note,
                         cover_image_path, illustration_path, illustration_prompt,
-                        wechat_media_id, publish_status, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                        wechat_media_id, publish_status, source_news_json, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                     ON CONFLICT(article_hash) DO UPDATE SET
                         theme = excluded.theme,
                         wechat_html = excluded.wechat_html,
@@ -131,7 +139,7 @@ class DatabaseManager:
                     article_hash, title, category, theme, author, lead,
                     markdown_content, wechat_html, douyin_script, xiaohongshu_note,
                     cover_image_path, illustration_path, illustration_prompt,
-                    wechat_media_id, publish_status
+                    wechat_media_id, publish_status, source_news_json
                 ))
                 return cursor.lastrowid
         except Exception as e:
@@ -163,7 +171,7 @@ class DatabaseManager:
         try:
             cursor = conn.execute("""
                 SELECT id, article_hash, title, category, theme, author, lead,
-                       cover_image_path, wechat_media_id, publish_status, created_at,
+                       cover_image_path, wechat_media_id, publish_status, source_news_json, created_at,
                        markdown_content, douyin_script, xiaohongshu_note, illustration_prompt
                 FROM articles
                 ORDER BY id DESC

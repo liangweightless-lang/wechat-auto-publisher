@@ -1867,3 +1867,24 @@ body {
     color: #64748b;
     font-size: 11px;
 }
+
+/* 历史智库文库 - 来源新闻溯源标签 */
+.history-source-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--primary);
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    padding: 1px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    white-space: nowrap;
+}
+
+.history-source-tag:active {
+    background: rgba(59, 130, 246, 0.16);
+}

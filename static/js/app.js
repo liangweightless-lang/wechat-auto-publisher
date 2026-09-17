@@ -60,11 +60,16 @@ function switchMainTab(tabName) {
     const btnTopics = document.getElementById('tabNavTopics');
     const btnMatrix = document.getElementById('tabNavMatrix');
 
+    const dock = document.getElementById('multiSelectDock');
     if (tabName === 'topics') {
         viewTopics.classList.add('active');
         viewMatrix.classList.remove('active');
         btnTopics.classList.add('active');
         btnMatrix.classList.remove('active');
+        // 回到选题页时恢复多选栏（如有勾选则显示）
+        if (dock && selectedArticlesMap && selectedArticlesMap.size > 0) {
+            dock.classList.add('active');
+        }
     } else if (tabName === 'matrix') {
         viewMatrix.classList.add('active');
         viewTopics.classList.remove('active');
@@ -74,6 +79,9 @@ function switchMainTab(tabName) {
         // 清除未读红点
         const badge = document.getElementById('previewDot');
         if (badge) badge.classList.remove('active');
+
+        // 矩阵排版视图：隐藏多选浮动栏，避免遮住推送按钮
+        if (dock) dock.classList.remove('active');
     }
     refreshIcons();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -807,11 +815,22 @@ function renderHistoryCards(articles) {
             ? '<span style="color: #16a34a; font-weight: 600;">已推草稿箱</span>'
             : '<span style="color: #ca8a04; font-weight: 600;">草稿存档</span>';
 
+        // 解析来源新闻列表
+        let sourceNewsList = [];
+        try { sourceNewsList = JSON.parse(art.source_news_json || '[]'); } catch(e) {}
+        const hasSource = sourceNewsList.length > 0;
+        const sourceTag = hasSource
+            ? `<span class="history-source-tag" onclick="showSourceNewsModal(event, ${art.id}, '${encodeURIComponent(JSON.stringify(sourceNewsList))}')">
+                <i data-lucide="newspaper" style="width: 10px; height: 10px;"></i>
+                来源 ${sourceNewsList.length} 篇报道
+               </span>`
+            : '';
+
         html += `
         <div class="history-card" onclick="loadHistoryArticleDetail(${art.id})">
             <div class="history-card-header">
                 <span class="history-card-tag">${art.category || '深度研判'}</span>
-                <span class="history-card-time">${art.created_at || ''}</span>
+                <span class="history-card-time">${art.created_at ? art.created_at.substring(0,16) : ''}</span>
             </div>
             <div class="history-card-title">${art.title}</div>
             <div class="history-card-status">
@@ -819,6 +838,7 @@ function renderHistoryCards(articles) {
                 <span>${statusBadge}</span>
                 <span>·</span>
                 <span>主题: ${art.theme || 'think_tank'}</span>
+                ${hasSource ? '<span>·</span>' + sourceTag : ''}
             </div>
         </div>
         `;
@@ -995,6 +1015,52 @@ function showToast(msg, type = 'info') {
     toastTimeout = setTimeout(() => {
         toast.classList.remove('active');
     }, 2800);
+}
+
+// =========================================================================
+// 历史文库 - 来源报道溯源弹层
+// =========================================================================
+function showSourceNewsModal(event, artId, encodedList) {
+    event.stopPropagation();
+    let newsList = [];
+    try { newsList = JSON.parse(decodeURIComponent(encodedList)); } catch(e) {}
+
+    let itemsHtml = newsList.map((n, i) => `
+        <div style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+            <div style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">${i+1}. ${n.title || '未知标题'}</div>
+            <div style="font-size: 12px; color: var(--text-muted); display: flex; gap: 8px; flex-wrap: wrap;">
+                <span>📡 ${n.source || '权威媒体'}</span>
+                <span>🕒 ${n.pub_time || '实时'}</span>
+                ${n.url ? '<a href="' + n.url + '" target="_blank" style="color: var(--primary); text-decoration: none;">🔗 原文</a>' : ''}
+            </div>
+        </div>
+    `).join('');
+
+    // 复用/创建简单模态层
+    let modal = document.getElementById('sourceNewsModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'sourceNewsModal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:3000;display:flex;align-items:flex-end;';
+        modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+        <div style="width:100%;max-height:70vh;background:var(--bg-card);border-radius:18px 18px 0 0;overflow:hidden;display:flex;flex-direction:column;">
+            <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:15px;font-weight:700;color:var(--text-main);">📰 引用来源报道（${newsList.length} 篇）</span>
+                <button onclick="document.getElementById('sourceNewsModal').remove()" style="border:none;background:none;padding:4px;cursor:pointer;color:var(--text-muted);">
+                    <i data-lucide="x" style="width:18px;height:18px;"></i>
+                </button>
+            </div>
+            <div style="overflow-y:auto;padding:0 16px 16px;flex:1;">
+                ${itemsHtml || '<div style="padding:20px;text-align:center;color:var(--text-muted);">该文章由单篇话题生成，无多源引用记录</div>'}
+            </div>
+        </div>
+    `;
+    modal.style.display = 'flex';
+    refreshIcons();
 }
 
 function triggerMultiSelectGenerate() {

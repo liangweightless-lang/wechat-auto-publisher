@@ -259,8 +259,8 @@ class WeChatFormatter:
         # 表格强化 (斑马纹与圆角阴影)
         style_table_wrap = "margin: 22px 0; overflow-x: auto; -webkit-overflow-scrolling: touch;"
         style_table = f"width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; line-height: 1.5; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1px solid {theme['border']};"
-        style_th = f"background-color: {theme['primary']}; color: #f8fafc; font-weight: 600; padding: 10px 12px; border: 1px solid {theme['primary']}; font-size: 13px;"
-        style_td = f"padding: 9px 12px; border: 1px solid {theme['border']}; color: {theme['text_main']}; background-color: #ffffff; font-size: 13px;"
+        style_th = f"background-color: {theme['primary']}; color: #f8fafc; font-weight: 700; padding: 10px 12px; border: 1px solid {theme['primary']}; font-size: 12.5px; text-align: center; white-space: nowrap; vertical-align: middle; letter-spacing: 0.3px;"
+        style_td = f"padding: 9px 12px; border: 1px solid {theme['border']}; color: {theme['text_main']}; background-color: #ffffff; font-size: 13px; vertical-align: middle; line-height: 1.5;"
 
         style_ul = f"margin: 0 0 18px 0; padding-left: 20px; color: {theme['text_sub']};"
         style_ol = f"margin: 0 0 18px 0; padding-left: 22px; color: {theme['text_sub']};"
@@ -327,8 +327,17 @@ class WeChatFormatter:
             styled_html,
             flags=re.DOTALL
         )
-        styled_html = re.sub(r'<th([^>]*)>(.*?)</th>', lambda m: f'<th style="{style_th}">{m.group(2)}</th>', styled_html, flags=re.DOTALL)
-        styled_html = re.sub(r'<td([^>]*)>(.*?)</td>', lambda m: f'<td style="{style_td}">{m.group(2)}</td>', styled_html, flags=re.DOTALL)
+        def _replace_th(m):
+            # 剥离 <strong> 包裹（前序步骤可能染了深色样式），保持纯净白色表头文字
+            raw_content = m.group(2)
+            clean_content = re.sub(r'<strong[^>]*>(.*?)</strong>', r'\1', raw_content, flags=re.DOTALL)
+            return f'<th style="{style_th}">{clean_content}</th>'
+
+        def _replace_td(m):
+            return f'<td style="{style_td}">{m.group(2)}</td>'
+
+        styled_html = re.sub(r'<th\b([^>]*)>(.*?)</th>', _replace_th, styled_html, flags=re.DOTALL)
+        styled_html = re.sub(r'<td\b([^>]*)>(.*?)</td>', _replace_td, styled_html, flags=re.DOTALL)
 
         # 11. 列表
         styled_html = re.sub(r'<ul>', f'<ul style="{style_ul}">', styled_html)

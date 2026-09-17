@@ -344,6 +344,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             image_style = form.getvalue("image_style", "photojournalism").strip()
             selected_articles_str = form.getvalue("selected_articles", "").strip()
             raw_content = ""
+            _source_news_json = "[]"
 
             # 优先从多选新闻中并发抓取真实正文并组装多源情报包
             if selected_articles_str:
@@ -368,6 +369,12 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
 {article_text}
 """)
                         raw_content = "\n".join(packet_lines)
+                        # 记录来源新闻列表，用于历史追溯
+                        import json as _json
+                        _source_news_json = _json.dumps([
+                            {"title": a.get("title",""), "source": a.get("source",""), "url": a.get("url",""), "pub_time": a.get("pub_time","")}
+                            for a in articles_list
+                        ], ensure_ascii=False)
                 except Exception as e_parse:
                     logger.warning(f"解析多选新闻材料失败: {e_parse}")
 
@@ -521,7 +528,8 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                 douyin_script=douyin_script,
                 xiaohongshu_note=xiaohongshu_note,
                 cover_image_path=cover_path,
-                illustration_prompt=title
+                illustration_prompt=title,
+                source_news_json=_source_news_json
             )
 
             CURRENT_CACHE["article_id"] = art_id
@@ -591,6 +599,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             douyin_script = matrix_res["douyin"]
             xiaohongshu_note = matrix_res["xiaohongshu"]
 
+            _source_news_json = "[]"
             art_id = DatabaseManager.save_article(
                 title=title,
                 category=topic[:20] if topic else "前沿热点",
@@ -602,7 +611,8 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                 douyin_script=douyin_script,
                 xiaohongshu_note=xiaohongshu_note,
                 cover_image_path=cover_path,
-                illustration_prompt=title
+                illustration_prompt=title,
+                source_news_json=_source_news_json
             )
 
             CURRENT_CACHE["article_id"] = art_id
