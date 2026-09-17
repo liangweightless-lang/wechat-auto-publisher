@@ -6,7 +6,7 @@
     <title>局势洞见 · 微信公众号创作工作台</title>
     <!-- Lucide 现代极简矢量图标库 -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=5.5">
+    <link rel="stylesheet" href="/static/css/style.css?v=6.0">
 </head>
 <body>
 
@@ -59,11 +59,17 @@
             <!-- 全球防务情报榜单 -->
             <div class="mobile-card">
                 <div class="mobile-card-header">
-                    <div class="card-title-group">
-                        <i data-lucide="globe-2" class="card-title-icon"></i>
-                        <span class="card-title-text">全球防务与官方公告榜</span>
+                    <div class="card-header-left">
+                        <div class="card-title-group">
+                            <i data-lucide="globe-2" class="card-title-icon"></i>
+                            <span class="card-title-text">全球防务与官方公告榜</span>
+                        </div>
+                        <div class="feed-sync-time" id="feedSyncTime">
+                            <i data-lucide="clock" style="width: 11px; height: 11px;"></i>
+                            <span>上次更新：今日实时 · 15分钟有效</span>
+                        </div>
                     </div>
-                    <button class="card-refresh-btn" onclick="loadHotTopics(currentCategory)">
+                    <button class="card-refresh-btn" onclick="loadHotTopics(currentCategory, true)">
                         <i data-lucide="rotate-cw" style="width: 13px; height: 13px;"></i>
                         <span>刷新</span>
                     </button>
@@ -433,7 +439,7 @@
     <!-- 轻量级手机 Toast 提示条 -->
     <div class="toast-bar" id="mobileToast">提示信息</div>
 
-    <script src="/static/js/app.js?v=5.5"></script>
+    <script src="/static/js/app.js?v=6.0"></script>
     <script>
         if (window.lucide) {
             lucide.createIcons();

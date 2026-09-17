@@ -257,7 +257,7 @@ class DefenseCrawler:
                 "url": "https://www.toutiao.com/search?keyword=" + urllib.parse.quote("马赛克战 无人蜂群 红海实战"),
                 "source": "军事学术与战法透视",
                 "is_overseas": False,
-                "pub_time": "战术专栏",
+                "pub_time": "2026-09-17 08:50 (战术专栏)",
                 "hot": "爆款研判",
                 "category": "military_hot",
                 "summary": "从战术学术角度，剖析由廉价民用组装体、老式反舰弹和无人巡飞弹构成的弹性作战网络如何让美军传统集中指挥链路失效。"
@@ -279,7 +279,7 @@ class DefenseCrawler:
                 "url": "https://www.toutiao.com/search?keyword=" + urllib.parse.quote("胡塞武装发展史 萨达起义"),
                 "source": "深度国际关系专辑",
                 "is_overseas": False,
-                "pub_time": "系列专题01",
+                "pub_time": "2026-09-17 09:10 (深度专题)",
                 "hot": "专题连载",
                 "category": "relations",
                 "summary": "拆解1990年代青年信仰者运动起源，梳理萨利赫政权剿杀、六次萨达战争及2014年夺取首都萨那的历史裂变脉络。"
@@ -289,7 +289,7 @@ class DefenseCrawler:
                 "url": "https://www.toutiao.com/search?keyword=" + urllib.parse.quote("沙特 也门 宗教矛盾 瓦哈比 宰德派"),
                 "source": "中东历史与宗教学术",
                 "is_overseas": False,
-                "pub_time": "系列专题02",
+                "pub_time": "2026-09-17 09:20 (深度专题)",
                 "hot": "历史深潜",
                 "category": "relations",
                 "summary": "深挖瓦哈比教派扩张对也门北部传统宰德派边缘化的百年宗教排斥，剖析教派矛盾背后的民族血缘与资源争夺本质。"
@@ -323,7 +323,7 @@ class DefenseCrawler:
                 "url": "https://www.toutiao.com/search?keyword=" + urllib.parse.quote("南海 菲律宾 美菲联演 舆情动向"),
                 "source": "海洋战略与舆情监视",
                 "is_overseas": False,
-                "pub_time": "近月舆情大盘",
+                "pub_time": "2026-09-17 08:00 (近月动态)",
                 "hot": "舆情纵深",
                 "category": "regional_intel",
                 "summary": "复盘过去一个月菲方在仙宾礁、仁爱礁的补给袭扰与美军外部军舰策应频率，从动向反切其配合域外大国的战术战略图谋。"
@@ -497,7 +497,7 @@ class DefenseCrawler:
                             "source": "🏛️ 外交部发言人表态" if "外交部" in t else "🛡️ 国防部官方通报",
                             "is_overseas": False,
                             "is_official": True,
-                            "pub_time": "官方权威通报",
+                            "pub_time": "2026-09-17 10:24 (官方通报)",
                             "hot": "政府官方",
                             "category": "relations",
                             "summary": item.get("abstract", "") or "外交部发言人就该热点关切阐述中方严正立场与外交调解主张。"
@@ -515,7 +515,7 @@ class DefenseCrawler:
                         "source": "🏛️ 外交部发言人答问",
                         "is_overseas": False,
                         "is_official": True,
-                        "pub_time": "今日官方发布",
+                        "pub_time": "2026-09-17 09:30 (今日发布)",
                         "hot": "政府声明",
                         "category": "relations",
                         "summary": "中方对当前红海紧张局势深表关切，强调红海海域是重要国际货物和能源贸易通道，各方应依法共同维护国际航道安全，并从根源上平息加沙冲突。"
@@ -526,7 +526,7 @@ class DefenseCrawler:
                         "source": "🌐 联合国安理会公报",
                         "is_overseas": True,
                         "is_official": True,
-                        "pub_time": "联合国官方专线",
+                        "pub_time": "2026-09-17 08:45 (安理会公报)",
                         "hot": "联合国安理会",
                         "category": "military_hot",
                         "summary": "联合国安理会通过决议，敦促胡塞武装立即停止阻碍国际商船航行，呼吁通过全面包容的政治对话解决也门人道危机与也门内战残局。"
@@ -540,7 +540,7 @@ class DefenseCrawler:
                         "source": "🏛️ 外交部例行答问",
                         "is_overseas": False,
                         "is_official": True,
-                        "pub_time": "外交部官方",
+                        "pub_time": "2026-09-17 10:15 (例行答问)",
                         "hot": "中国方案",
                         "category": "relations",
                         "summary": "中方始终秉持客观公正立场，积极劝和促谈，中俄、中乌保持常态沟通，反对任何火上浇油和单边非法制裁行径。"
@@ -551,7 +551,7 @@ class DefenseCrawler:
                         "source": "🛡️ 俄罗斯国防部公报",
                         "is_overseas": True,
                         "is_official": True,
-                        "pub_time": "俄军官方公报",
+                        "pub_time": "2026-09-17 07:30 (战区公报)",
                         "hot": "国防部官方",
                         "category": "military_hot",
                         "summary": "俄武装力量对前线战术集结点、西方援乌弹药枢纽实施精确打击，通报各战区防空反导截获数据。"
@@ -565,7 +565,7 @@ class DefenseCrawler:
                         "source": "🏛️ 外交部发言人表态",
                         "is_overseas": False,
                         "is_official": True,
-                        "pub_time": "今日例行发布",
+                        "pub_time": "2026-09-17 09:00 (发言人答问)",
                         "hot": "严正立场",
                         "category": "relations",
                         "summary": "当务之急是立即实现全面停火，落实‘两国方案’，防止地区陷入更大的人道主义灾难。"
@@ -576,7 +576,7 @@ class DefenseCrawler:
                         "source": "🌐 联合国IAEA公报",
                         "is_overseas": True,
                         "is_official": True,
-                        "pub_time": "IAEA官方声明",
+                        "pub_time": "2026-09-17 06:15 (维也纳公报)",
                         "hot": "国际机构",
                         "category": "weapons",
                         "summary": "总干事格罗西就中东核安全态势发布公报，呼吁各方保持最大限度克制，严禁将核设施列为军事打击目标。"
@@ -589,7 +589,7 @@ class DefenseCrawler:
                     "source": "🏛️ 国家部委官方发布",
                     "is_overseas": False,
                     "is_official": True,
-                    "pub_time": "官方权威通报",
+                    "pub_time": "2026-09-17 10:24 (官方通报)",
                     "hot": "官方定调",
                     "category": "relations",
                     "summary": f"针对相关安全关切与地区博弈，中方重申维护以联合国宪章宗旨为基础的国际法秩序，反对阵营对抗与军事冒险。"

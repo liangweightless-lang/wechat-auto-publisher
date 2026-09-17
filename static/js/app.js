@@ -169,7 +169,14 @@ async function loadHotTopics(cat = 'all', forceRefresh = false) {
         const data = await resp.json();
         if (data && data.clusters && data.clusters.length > 0) {
             currentClustersData = data.clusters;
-            clientClustersCache.set(cat, data.clusters); // 存入前端缓存
+            clientClustersCache.set(cat, data.clusters);
+    // 同步更新顶部全局情报流时间戳
+    const syncTimeEl = document.getElementById('feedSyncTime');
+    if (syncTimeEl) {
+        const nowStr = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        syncTimeEl.innerHTML = `<i data-lucide="clock" style="width: 11px; height: 11px;"></i> <span>上次更新：${nowStr} · 自动同步</span>`;
+    }
+ // 存入前端缓存
             renderClusters(data.clusters);
             if (forceRefresh) {
                 showToast('🔄 已获取全网最新防务情报与官方通报！');
@@ -208,6 +215,10 @@ function renderClusters(clusters) {
                     <div class="cluster-main-preview">${cluster.main_title}</div>
                 </div>
                 <div class="cluster-meta-right">
+                    <span class="cluster-time-pill">
+                        <i data-lucide="clock-3" style="width: 11px; height: 11px;"></i>
+                        <span>${cluster.latest_time || '今日最新'}</span>
+                    </span>
                     <span class="cluster-count-badge">
                         <i data-lucide="layers-2" style="width: 12px; height: 12px;"></i>
                         <span>${cluster.topic_count} 篇</span>
@@ -262,9 +273,12 @@ function renderSubNewsItems(clusterId, items) {
                     ${item.title}
                 </div>
                 <div class="sub-news-meta">
-                    <span>${source}</span>
+                    <span class="meta-source-tag">${source}</span>
                     <span>·</span>
-                    <span>${pubTime}</span>
+                    <span class="meta-time-tag">
+                        <i data-lucide="clock" style="width: 10px; height: 10px;"></i>
+                        <span>${pubTime}</span>
+                    </span>
                     ${url ? `<span>·</span><a href="${url}" target="_blank" onclick="event.stopPropagation()" style="color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><i data-lucide="external-link" style="width: 10px; height: 10px;"></i>出处公告</a>` : ''}
                 </div>
             </div>
