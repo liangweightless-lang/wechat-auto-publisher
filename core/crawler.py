@@ -8,6 +8,7 @@
 4. 国家地区舆情 (regional_intel) - 南海、台海等区域一个月动态聚合与周边国家动向企图挖掘
 """
 
+import re
 import json
 import time
 import datetime
@@ -25,6 +26,84 @@ from config.settings import settings, logger
 class DefenseCrawler:
     _TOPICS_CACHE: Dict[str, Any] = {}
     _CACHE_TTL_SECONDS: int = 900  # 15分钟服务端情报缓存
+    _TRANSLATE_CACHE: Dict[str, str] = {}  # 翻译结果内存缓存，避免重复调用
+
+    # ---- 英文判断：超过60%字符是ASCII字母/数字则视为英文 ----
+    @staticmethod
+    def _is_english(text: str) -> bool:
+        if not text:
+            return False
+        alpha_chars = [c for c in text if c.isalpha()]
+        if not alpha_chars:
+            return False
+        ascii_count = sum(1 for c in alpha_chars if ord(c) < 128)
+        return ascii_count / len(alpha_chars) > 0.6
+
+    @classmethod
+    def _translate_titles_batch(cls, titles: List[str]) -> Dict[str, str]:
+        """
+        批量翻译英文标题为地道简体中文。
+        优先使用 Qwen2.5-7B 极速模型（秒级响应、稳定不超时），备用 DeepSeek-V3。
+        支持批量切分与本地内存缓存。
+        """
+        to_translate = [t for t in titles if cls._is_english(t) and t not in cls._TRANSLATE_CACHE]
+        results = {t: cls._TRANSLATE_CACHE[t] for t in titles if t in cls._TRANSLATE_CACHE}
+        if not to_translate:
+            return results
+
+        api_key = settings.LLM_API_KEY
+        base_url = settings.LLM_BASE_URL.rstrip("/")
+        if not api_key:
+            return results
+
+        # 批次大小切分（每批最多 8 条，避免长提示词排队超时）
+        chunk_size = 8
+        chunks = [to_translate[i:i + chunk_size] for i in range(0, len(to_translate), chunk_size)]
+
+        for chunk in chunks:
+            numbered = "\n".join(f"{i+1}. {t}" for i, t in enumerate(chunk))
+            prompt = (
+                "你是专业国际军事与外交新闻审校翻译。请将下列英文新闻标题逐条翻译为地道精准的简体中文标题，"
+                "符合中国主流媒体新闻规范（保留国家、地名、人名、战机舰艇通用中文译名）。"
+                "严格按格式输出，每行一条：'序号. 中文标题'，不要任何多余分析说明。\n\n"
+                + numbered
+            )
+
+            # 优先 Qwen2.5 极速模型，回退 DeepSeek-V3
+            for model_name in ["Qwen/Qwen2.5-7B-Instruct", "deepseek-ai/DeepSeek-V3"]:
+                try:
+                    resp = requests.post(
+                        f"{base_url}/chat/completions",
+                        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                        json={
+                            "model": model_name,
+                            "messages": [{"role": "user", "content": prompt}],
+                            "temperature": 0.1,
+                            "max_tokens": len(chunk) * 70
+                        },
+                        timeout=12,
+                        verify=False
+                    )
+                    if resp.status_code == 200:
+                        output = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+                        lines = [l.strip() for l in output.strip().split("\n") if l.strip()]
+                        for line in lines:
+                            m = re.match(r"^(\d+)[.、．]\s*(.+)$", line)
+                            if m:
+                                idx = int(m.group(1)) - 1
+                                translated = m.group(2).strip()
+                                if 0 <= idx < len(chunk):
+                                    orig = chunk[idx]
+                                    results[orig] = translated
+                                    cls._TRANSLATE_CACHE[orig] = translated
+                        logger.info(f"[{model_name}] 批量翻译成功：{len(chunk)} 条标题")
+                        break
+                    else:
+                        logger.warning(f"标题翻译模型 {model_name} 状态码: {resp.status_code}")
+                except Exception as e:
+                    logger.warning(f"标题翻译模型 {model_name} 异常: {e}，尝试备用通道")
+
+        return results
 
     """防务智库多源聚合器 (四大垂直选题体系驱动)"""
 
@@ -75,10 +154,10 @@ class DefenseCrawler:
 
     @classmethod
     def _is_stale(cls, url: str, dt_str: str = "") -> bool:
-        stale_patterns = ["/2021", "/2022", "/2023", "/2024", "/2025-", "2023-", "2024-"]
-        if any(p in url for p in stale_patterns):
+        """严格时效性校验：过滤 2025 及以前的历史旧闻，仅保留 2026 年最新战报"""
+        if re.search(r'20(0\d|1\d|2[0-5])', url):
             return True
-        if dt_str and any(y in dt_str for y in ["2021", "2022", "2023", "2024"]):
+        if dt_str and re.search(r'20(0\d|1\d|2[0-5])', dt_str):
             return True
         return False
 
@@ -136,12 +215,19 @@ class DefenseCrawler:
         except Exception as e:
             logger.warning(f"UN RSS 异常: {e}")
 
-        # ② 新华社英文（国家级官方权威）
+        # ② 联合国英文官方频道（全球官方顶级信源）
         try:
-            xinhua_topics = cls._fetch_xinhua_official()
-            official_items.extend(xinhua_topics)
+            un_en_topics = cls._fetch_un_news_en_official()
+            official_items.extend(un_en_topics)
         except Exception as e:
-            logger.warning(f"新华社 RSS 异常: {e}")
+            logger.warning(f"联合国英文 RSS 异常: {e}")
+
+        # ③ 塔斯社（国家通讯社官方一手战报）
+        try:
+            tass_topics = cls._fetch_tass_official()
+            official_items.extend(tass_topics)
+        except Exception as e:
+            logger.warning(f"塔斯社 RSS 异常: {e}")
 
         # ③ 俄罗斯卫星社外网（国际一手战报）
         try:
@@ -183,6 +269,16 @@ class DefenseCrawler:
                 continue
 
             filtered_results.append(item)
+
+        # 批量翻译英文标题（一次 API 调用）
+        en_titles = [item["title"] for item in filtered_results if cls._is_english(item["title"])]
+        if en_titles:
+            translations = cls._translate_titles_batch(en_titles)
+            for item in filtered_results:
+                orig = item["title"]
+                if orig in translations:
+                    item["title_original"] = orig  # 保留英文原标题备查
+                    item["title"] = translations[orig]
 
         return filtered_results[:limit]
 
@@ -269,10 +365,60 @@ class DefenseCrawler:
         return items
 
     @classmethod
-    def _fetch_xinhua_official(cls) -> List[Dict[str, Any]]:
-        """新华社英文官方 RSS 抓取（国际权威消息）"""
-        url = "https://www.xinhuanet.com/english/rss/worldrss.xml"
-        headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+    def _fetch_un_news_en_official(cls) -> List[Dict[str, Any]]:
+        """联合国和平安全频道英文官方 RSS 抓取（全球官方顶级信源）"""
+        url = "https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        items = []
+        try:
+            res = requests.get(url, headers=headers, timeout=7, verify=False)
+            if res.status_code == 200:
+                root = ET.fromstring(res.content)
+                for it in root.findall('.//item')[:15]:
+                    title_el = it.find('title')
+                    link_el = it.find('link')
+                    pub_el = it.find('pubDate')
+                    desc_el = it.find('description')
+                    if title_el is None or not title_el.text:
+                        continue
+                    title_raw = re.sub(r'<[^>]+>', '', title_el.text).strip()
+                    link = link_el.text.strip() if link_el is not None else ""
+                    pub_str = pub_el.text.strip() if pub_el is not None else ""
+                    desc = re.sub(r'<[^>]+>', '', desc_el.text).strip() if desc_el is not None and desc_el.text else ""
+
+                    if cls._is_stale(link, pub_str):
+                        continue
+
+                    is_defense = any(k in title_raw for k in cls.DEFENSE_KEYWORDS) or any(
+                        k.lower() in title_raw.lower() for k in [
+                            "military", "missile", "drone", "attack", "war", "conflict",
+                            "weapons", "nuclear", "navy", "army", "troops", "combat",
+                            "strike", "defense", "sanction", "Gaza", "Houthi", "Iran", "Ukraine", "Sudan", "Lebanon"
+                        ]
+                    )
+                    if is_defense:
+                        time_tag = cls._format_time(dt_str=pub_str)
+                        cat = cls._classify_topic(title_raw)
+                        items.append({
+                            "title": title_raw,
+                            "url": link,
+                            "source": "🌐 联合国新闻·英文",
+                            "is_overseas": True,
+                            "is_official": True,
+                            "pub_time": time_tag,
+                            "hot": "官方权威",
+                            "category": cat,
+                            "summary": desc[:200] if desc else f"联合国和平与安全专线英文战报，发布于 {time_tag}。"
+                        })
+        except Exception as e:
+            logger.warning(f"抓取联合国英文 RSS 失败: {e}")
+        return items
+
+    @classmethod
+    def _fetch_tass_official(cls) -> List[Dict[str, Any]]:
+        """塔斯社国际官方通讯社一手防务与地缘焦点抓取"""
+        url = "https://tass.com/rss/v2.xml"
+        headers = {"User-Agent": "Mozilla/5.0"}
         items = []
         try:
             res = requests.get(url, headers=headers, timeout=6, verify=False)
@@ -285,40 +431,38 @@ class DefenseCrawler:
                     desc_el = it.find('description')
                     if title_el is None or not title_el.text:
                         continue
-                    title_raw = title_el.text.strip()
+                    title_raw = re.sub(r'<[^>]+>', '', title_el.text).strip()
                     link = link_el.text.strip() if link_el is not None else ""
                     pub_str = pub_el.text.strip() if pub_el is not None else ""
-                    desc = desc_el.text.strip() if desc_el is not None else ""
+                    desc = re.sub(r'<[^>]+>', '', desc_el.text).strip() if desc_el is not None and desc_el.text else ""
 
                     if cls._is_stale(link, pub_str):
                         continue
 
-                    is_defense = any(k in title_raw for k in cls.DEFENSE_KEYWORDS) or any(
+                    is_defense = any(
                         k.lower() in title_raw.lower() for k in [
                             "military", "missile", "drone", "attack", "war", "conflict",
-                            "weapons", "nuclear", "navy", "army", "troops", "combat",
-                            "exercise", "strike", "defense", "sanction", "Taiwan", "Ukraine",
-                            "Gaza", "Houthi", "Iran", "Russia", "China sea"
+                            "strike", "army", "troops", "air strike", "gaza",
+                            "israel", "iran", "yemen", "houthi", "lebanon", "hezbollah",
+                            "russia", "ukraine", "tanks", "defense", "syria", "nuclear", "weapon"
                         ]
                     )
-                    is_excluded = any(bad in title_raw for bad in cls.EXCLUDE_KEYWORDS)
-
-                    if is_defense and not is_excluded:
+                    if is_defense:
                         time_tag = cls._format_time(dt_str=pub_str)
                         cat = cls._classify_topic(title_raw)
                         items.append({
                             "title": title_raw,
                             "url": link,
-                            "source": "📡 新华社·官方英文",
+                            "source": "🇷🇺 塔斯社·官方英文",
                             "is_overseas": True,
                             "is_official": True,
                             "pub_time": time_tag,
                             "hot": "权威官方",
                             "category": cat,
-                            "summary": desc[:200] if desc else f"新华社英文官方发布，时间：{time_tag}。"
+                            "summary": desc[:200] if desc else f"塔斯社国家通讯社前沿专线，时间：{time_tag}。"
                         })
         except Exception as e:
-            logger.warning(f"抓取新华社英文 RSS 失败: {e}")
+            logger.warning(f"抓取塔斯社 RSS 失败: {e}")
         return items
 
     @classmethod

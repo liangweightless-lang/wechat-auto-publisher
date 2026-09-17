@@ -279,6 +279,7 @@ function renderSubNewsItems(clusterId, items) {
                 <div class="sub-news-title">
                     ${isOfficial ? '<span class="official-badge-gold"><i data-lucide="shield-check" style="width: 10px; height: 10px;"></i>官方权威</span> ' : ''}
                     ${item.title}
+                    ${item.title_original ? `<div class="sub-news-original-title" style="font-size: 11.5px; color: #94a3b8; margin-top: 3px; font-style: italic; line-height: 1.35;"><span style="color: #64748b; font-weight: 600; font-style: normal; background: rgba(148, 163, 184, 0.12); padding: 1px 4px; border-radius: 3px; margin-right: 4px;">英译汉</span>${item.title_original}</div>` : ''}
                 </div>
                 <div class="sub-news-meta">
                     <span class="meta-source-tag">${source}</span>
