@@ -190,7 +190,7 @@ export function renderClusters(clusters) {
                 <div class="expand-sources-container">
                     <button class="expand-sources-btn" id="expandBtn_${cluster.cluster_id}" onclick="window.app.expandOfficialSources('${cluster.cluster_id}', event)">
                         <i data-lucide="shield" style="width: 13px; height: 13px;"></i>
-                        <span>搜集本事件更多官方公告与外交部发言</span>
+                        <span>检索更多关联报道与官方通报</span>
                     </button>
                 </div>
             </div>
@@ -261,7 +261,7 @@ export async function expandOfficialSources(clusterId, event) {
     if (!btn || !subList || !cluster) return;
 
     const origText = btn.innerHTML;
-    btn.innerHTML = `<i data-lucide="loader-2" class="spin" style="width: 13px; height: 13px;"></i> <span>正在跨网搜集外交部答问与国防部公报...</span>`;
+    btn.innerHTML = `<i data-lucide="loader-2" class="spin" style="width: 13px; height: 13px;"></i> <span>正在检索关联权威报道与通报...</span>`;
     btn.disabled = true;
     refreshIcons();
 
@@ -271,10 +271,10 @@ export async function expandOfficialSources(clusterId, event) {
             cluster.items = cluster.items.concat(data.items);
             cluster.topic_count = cluster.items.length;
             subList.innerHTML = renderSubNewsItems(cluster.cluster_id, cluster.items);
-            btn.innerHTML = `<i data-lucide="check" style="width: 13px; height: 13px; color: #10b981;"></i> <span>已聚合 ${data.items.length} 篇权威官方立场公告</span>`;
-            showToast(`成功补充 ${data.items.length} 条官方外交部/国防部权威报道！`, 'success');
+            btn.innerHTML = `<i data-lucide="check" style="width: 13px; height: 13px; color: #10b981;"></i> <span>已聚合 ${data.items.length} 篇关联权威报道与通报</span>`;
+            showToast(`成功补充 ${data.items.length} 条关联权威报道与通报！`, 'success');
         } else {
-            btn.innerHTML = `<i data-lucide="info" style="width: 13px; height: 13px;"></i> <span>暂无更多最新官方答问</span>`;
+            btn.innerHTML = `<i data-lucide="info" style="width: 13px; height: 13px;"></i> <span>暂无更多最新关联报道</span>`;
         }
     } catch (e) {
         btn.innerHTML = origText;
