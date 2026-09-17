@@ -1755,69 +1755,245 @@ body {
 }
 
 /* ==========================================================================
-   V5.5 现代流光骨架屏动效 (Skeleton Shimmer) 对标今日头条/知乎
+   全新高阶防务情报雷达加载与拟态流光骨架屏 (Radar Loading & Shimmer)
    ========================================================================== */
-.skeleton-container {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    width: 100%;
-    padding: 4px 0;
-}
-
-.skeleton-card {
-    flex-shrink: 0;
-    width: 100%;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-light);
+.feed-radar-loader {
+    position: relative;
+    overflow: hidden;
     background: var(--bg-card);
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    box-shadow: var(--shadow-subtle);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.skeleton-shimmer {
-    background: linear-gradient(90deg, var(--bg-input) 25%, var(--bg-page) 50%, var(--bg-input) 75%);
+.radar-loader-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, var(--primary) 50%, transparent 100%);
     background-size: 200% 100%;
-    animation: skeletonShimmer 1.5s infinite ease-in-out;
+    animation: radarLineSweep 1.8s infinite linear;
+}
+
+@keyframes radarLineSweep {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.radar-loader-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.radar-loader-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.radar-pulse-box {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(37, 99, 235, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.radar-scan-anim {
+    width: 16px;
+    height: 16px;
+    color: var(--primary);
+    animation: radarRotate 3s linear infinite;
+}
+
+@keyframes radarRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.radar-ping-ring {
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1.5px solid var(--primary);
+    opacity: 0.8;
+    animation: radarPingAnim 1.8s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+@keyframes radarPingAnim {
+    0% { transform: scale(0.85); opacity: 0.8; }
+    80%, 100% { transform: scale(1.4); opacity: 0; }
+}
+
+.radar-loader-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.radar-loader-title {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-title);
+    letter-spacing: -0.2px;
+}
+
+.radar-loader-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.radar-loader-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--primary);
+    background: rgba(37, 99, 235, 0.08);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    padding: 3px 8px;
+    border-radius: 12px;
+    flex-shrink: 0;
+}
+
+.status-dot-pulse {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+    animation: dotPulse 1.2s infinite ease-in-out;
+}
+
+@keyframes dotPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.3; transform: scale(0.7); }
+}
+
+/* 高级扫光骨架屏卡片 (Shimmer Skeleton Cards) */
+.skeleton-shimmer {
+    background: linear-gradient(90deg, var(--bg-hover) 0%, rgba(255, 255, 255, 0.4) 50%, var(--bg-hover) 100%);
+    background-size: 250% 100%;
+    animation: shimmerWave 1.6s infinite ease-in-out;
     border-radius: 4px;
 }
 
-@keyframes skeletonShimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+[data-theme="dark"] .skeleton-shimmer {
+    background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%);
+    background-size: 250% 100%;
+}
+
+@keyframes shimmerWave {
+    0% { background-position: 150% 0; }
+    100% { background-position: -150% 0; }
+}
+
+.skeleton-cluster-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
 }
 
 .skeleton-header-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    gap: 12px;
 }
 
-.skeleton-tag {
+.skeleton-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+.skeleton-header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.skeleton-pill {
     width: 60px;
+    height: 16px;
+    border-radius: 10px;
+}
+
+.skeleton-title-line {
+    width: 80%;
     height: 16px;
     border-radius: 4px;
 }
 
-.skeleton-badge {
-    width: 45px;
-    height: 18px;
-    border-radius: 10px;
-}
-
-.skeleton-title {
-    width: 85%;
-    height: 18px;
+.skeleton-preview-line {
+    width: 95%;
+    height: 12px;
     border-radius: 4px;
 }
 
-.skeleton-sub {
-    width: 65%;
+.skeleton-time-pill {
+    width: 48px;
+    height: 16px;
+    border-radius: 6px;
+}
+
+.skeleton-count-pill {
+    width: 36px;
+    height: 16px;
+    border-radius: 8px;
+}
+
+.skeleton-sub-box {
+    border-top: 1px solid var(--border-light);
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.skeleton-sub-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+}
+
+.skeleton-checkbox {
+    width: 14px;
     height: 14px;
-    border-radius: 4px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.skeleton-sub-content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
 }
 
 /* ==========================================================================

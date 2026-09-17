@@ -5,21 +5,99 @@ import { showToast } from '../../utils/toast.js';
 import { toggleSelectNews, selectAllInCluster } from './topicSelector.js';
 
 export function renderSkeletonLoading() {
-    let skeletons = `
-    <div class="feed-loading-banner" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; font-size: 12.5px; color: var(--primary); background: rgba(37, 99, 235, 0.07); border: 1px dashed rgba(37, 99, 235, 0.25); border-radius: 8px; margin-bottom: 12px;">
-        <i data-lucide="loader-2" class="spin" style="width: 15px; height: 15px;"></i>
-        <span>正在跨网聚合联合国/塔斯社/外网官方战报并智能聚类排序...</span>
+    return `
+    <!-- 顶部高阶雷达侦测态指示器 (带流光扫描线与脉冲光环) -->
+    <div class="feed-radar-loader">
+        <div class="radar-loader-line"></div>
+        <div class="radar-loader-content">
+            <div class="radar-loader-left">
+                <div class="radar-pulse-box">
+                    <span class="radar-ping-ring"></span>
+                    <i data-lucide="radar" class="radar-scan-anim"></i>
+                </div>
+                <div class="radar-loader-text">
+                    <div class="radar-loader-title">正在全域侦测国际战略情报...</div>
+                    <div class="radar-loader-sub">联合国新闻 · 俄罗斯塔斯社 · 官方权威通报跨网聚合中</div>
+                </div>
+            </div>
+            <div class="radar-loader-status">
+                <span class="status-dot-pulse"></span>
+                <span>实时侦测</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 拟态流光骨架卡片 1 (第一项展开状态拟真) -->
+    <div class="skeleton-cluster-card">
+        <div class="skeleton-header-row">
+            <div class="skeleton-header-left">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="skeleton-shimmer skeleton-pill"></div>
+                    <div class="skeleton-shimmer" style="width: 130px; height: 16px; border-radius: 4px;"></div>
+                </div>
+                <div class="skeleton-shimmer skeleton-title-line"></div>
+                <div class="skeleton-shimmer skeleton-preview-line"></div>
+            </div>
+            <div class="skeleton-header-right">
+                <div class="skeleton-shimmer skeleton-time-pill"></div>
+                <div class="skeleton-shimmer skeleton-count-pill"></div>
+            </div>
+        </div>
+        <!-- 展开子项骨架 -->
+        <div class="skeleton-sub-box">
+            <div class="skeleton-sub-item">
+                <div class="skeleton-shimmer skeleton-checkbox"></div>
+                <div class="skeleton-sub-content">
+                    <div class="skeleton-shimmer" style="width: 82%; height: 14px; border-radius: 3px;"></div>
+                    <div class="skeleton-shimmer" style="width: 32%; height: 11px; border-radius: 3px;"></div>
+                </div>
+            </div>
+            <div class="skeleton-sub-item">
+                <div class="skeleton-shimmer skeleton-checkbox"></div>
+                <div class="skeleton-sub-content">
+                    <div class="skeleton-shimmer" style="width: 68%; height: 14px; border-radius: 3px;"></div>
+                    <div class="skeleton-shimmer" style="width: 38%; height: 11px; border-radius: 3px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 拟态流光骨架卡片 2 -->
+    <div class="skeleton-cluster-card">
+        <div class="skeleton-header-row">
+            <div class="skeleton-header-left">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="skeleton-shimmer skeleton-pill" style="width: 52px;"></div>
+                    <div class="skeleton-shimmer" style="width: 110px; height: 16px; border-radius: 4px;"></div>
+                </div>
+                <div class="skeleton-shimmer" style="width: 72%; height: 16px; border-radius: 4px;"></div>
+                <div class="skeleton-shimmer skeleton-preview-line"></div>
+            </div>
+            <div class="skeleton-header-right">
+                <div class="skeleton-shimmer skeleton-time-pill"></div>
+                <div class="skeleton-shimmer skeleton-count-pill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 拟态流光骨架卡片 3 -->
+    <div class="skeleton-cluster-card">
+        <div class="skeleton-header-row">
+            <div class="skeleton-header-left">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="skeleton-shimmer skeleton-pill" style="width: 58px;"></div>
+                    <div class="skeleton-shimmer" style="width: 140px; height: 16px; border-radius: 4px;"></div>
+                </div>
+                <div class="skeleton-shimmer" style="width: 65%; height: 16px; border-radius: 4px;"></div>
+                <div class="skeleton-shimmer" style="width: 78%; height: 12px; border-radius: 4px;"></div>
+            </div>
+            <div class="skeleton-header-right">
+                <div class="skeleton-shimmer skeleton-time-pill"></div>
+                <div class="skeleton-shimmer skeleton-count-pill"></div>
+            </div>
+        </div>
     </div>
     `;
-    for (let i = 0; i < 4; i++) {
-        skeletons += `
-        <div class="feed-skeleton-card" style="margin-bottom: 10px; padding: 14px; background: var(--bg-card); border-radius: 10px; border: 1px solid var(--border);">
-            <div class="skeleton-line shimmer" style="height: 16px; width: 65%; margin-bottom: 8px; border-radius: 4px; background: var(--bg-hover);"></div>
-            <div class="skeleton-line shimmer" style="height: 13px; width: 90%; margin-bottom: 10px; border-radius: 4px; background: var(--bg-hover);"></div>
-            <div class="skeleton-meta shimmer" style="height: 12px; width: 40%; border-radius: 4px; background: var(--bg-hover);"></div>
-        </div>`;
-    }
-    return skeletons;
 }
 
 export async function fetchAndRenderTopics(cat = 'all', forceRefresh = false) {
