@@ -81,17 +81,17 @@ export async function loadHistoryArticleDetail(id) {
             const titleEl = document.getElementById('previewMockTitle');
             if (titleEl) titleEl.innerText = art.title;
 
-            const bodyEl = document.getElementById('previewHtmlBody');
+            const bodyEl = document.getElementById('mobilePreviewContent');
             if (bodyEl) bodyEl.innerHTML = art.wechat_html || art.html_content;
 
-            const dyEl = document.getElementById('matrixDouyinText');
-            if (dyEl) dyEl.innerText = art.douyin_script || '暂无矩阵脚本';
+            const dyEl = document.getElementById('douyinScriptText');
+            if (dyEl) dyEl.value = art.douyin_script || '暂无矩阵脚本';
 
-            const xhsEl = document.getElementById('matrixXiaohongshuText');
-            if (xhsEl) xhsEl.innerText = art.xiaohongshu_note || '暂无小红书图文笔记';
+            const xhsEl = document.getElementById('xiaohongshuNoteText');
+            if (xhsEl) xhsEl.value = art.xiaohongshu_note || '暂无小红书图文笔记';
 
             window.app.closeBottomSheet('historySheet');
-            window.app.switchMainTab('preview');
+            window.app.switchMainTab('matrix');
             showToast('📖 已调出历史研报全文！', 'success');
         }
     } catch (e) {
@@ -121,7 +121,7 @@ export function showSourceNewsModal(event, artId, encodedList) {
                     <span>历史智库研报 · 事实信源追溯</span>
                 </div>
                 <button class="source-modal-close" onclick="document.getElementById('sourceNewsModal').classList.remove('active')">
-                    <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+                    <i data-lucide="x" style="width: 18px; height: 18px;"></i>
                 </button>
             </div>
             <div class="source-modal-body" id="sourceNewsModalBody"></div>

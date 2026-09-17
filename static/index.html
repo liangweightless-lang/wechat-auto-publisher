@@ -440,8 +440,9 @@
     </div>
 
     <!-- 智库 AI 策略总监调优对话抽屉 (Strategy Bottom Sheet) -->
-    <div class="bottom-sheet" id="strategySheet" style="max-height: 85vh;">
-        <div class="sheet-drag-handle"></div>
+    <div class="sheet-backdrop" id="strategySheetBackdrop" onclick="closeBottomSheet('strategySheet')"></div>
+    <div class="mobile-bottom-sheet" id="strategySheet">
+        <div class="sheet-handle-bar" onclick="closeBottomSheet('strategySheet')"></div>
         <div class="sheet-header">
             <div class="sheet-title" style="display: flex; align-items: center; gap: 8px;">
                 <div style="background: rgba(37, 99, 235, 0.12); color: var(--primary); width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center;">

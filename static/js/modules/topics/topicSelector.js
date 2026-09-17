@@ -53,34 +53,36 @@ export function updateSelectedUI() {
         }
     });
 
-    // 2. 底部浮动选择条显示与计数
-    const bar = document.getElementById('multiSelectFloatBar');
-    const countBadge = document.getElementById('selectedCountBadge');
-    const selectedList = Array.from(state.selectedArticlesMap.values());
-    const count = selectedList.length;
+    // 2. 底部多选吸底工具条显示与计数
+    const dock = document.getElementById('multiSelectDock');
+    const badge = document.getElementById('selectedCountBadge');
+    const count = state.selectedArticlesMap.size;
 
-    if (bar) {
-        if (count > 0) {
-            bar.classList.add('visible');
-            if (countBadge) countBadge.textContent = `${count} 篇情报`;
-        } else {
-            bar.classList.remove('visible');
-        }
+    if (badge) badge.innerText = count;
+    if (dock) {
+        dock.classList.toggle('active', count > 0);
     }
 
     // 3. 实时填入输入框
-    const topicInput = document.getElementById('mobileTopicInput');
-    if (topicInput && count > 0) {
-        const titles = selectedList.map((it, i) => `${i + 1}. 【${it.source || '一手防务'}】${it.title}`).join('\n');
-        topicInput.value = titles;
-        topicInput.style.borderColor = 'var(--primary)';
+    const input = document.getElementById('mobileTopicInput');
+    if (input) {
+        if (count > 0) {
+            const titles = Array.from(state.selectedArticlesMap.values()).map(a => a.title);
+            input.value = `【多源情报交叉研判】已选定 ${count} 篇报道：\n` + titles.map((t, i) => `${i+1}. ${t}`).join('\n');
+            input.style.borderColor = 'var(--primary)';
+            input.style.height = 'auto';
+            input.style.height = Math.min(input.scrollHeight, 180) + 'px';
+        } else {
+            input.value = '';
+            input.style.height = 'auto';
+            input.style.borderColor = 'var(--border)';
+        }
     }
 
     refreshIcons();
 }
 
 export function selectTopic(idx) {
-    // 兼容快捷单选卡片
     if (!state.currentClustersData || !state.currentClustersData[idx]) return;
     const cluster = state.currentClustersData[idx];
     const input = document.getElementById('mobileTopicInput');

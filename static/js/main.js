@@ -11,27 +11,32 @@ import { loadHistoryArticles, loadHistoryArticleDetail, showSourceNewsModal } fr
 import { loadStrategyData, sendStrategyTuneMessage, triggerAiRadarRefresh, resetStrategyToDefault } from './modules/strategy/strategyChat.js';
 import { publishApi } from './api/publishApi.js';
 
-// 页面 Tab 切换
+// 页面主 Tab 切换 (发现选题 / 矩阵排版)
 export function switchMainTab(tabName) {
-    const tabTopics = document.getElementById('tabNavTopics');
-    const tabPreview = document.getElementById('tabNavPreview');
-    const viewTopics = document.getElementById('viewTopics');
-    const viewPreview = document.getElementById('viewPreview');
-    const topBar = document.getElementById('previewTopBar');
+    const viewTopics = document.getElementById('tabViewTopics');
+    const viewMatrix = document.getElementById('tabViewMatrix');
+    const btnTopics = document.getElementById('tabNavTopics');
+    const btnMatrix = document.getElementById('tabNavMatrix');
+    const dock = document.getElementById('multiSelectDock');
 
     if (tabName === 'topics') {
-        if (tabTopics) tabTopics.classList.add('active');
-        if (tabPreview) tabPreview.classList.remove('active');
         if (viewTopics) viewTopics.classList.add('active');
-        if (viewPreview) viewPreview.classList.remove('active');
-        if (topBar) topBar.classList.remove('active');
+        if (viewMatrix) viewMatrix.classList.remove('active');
+        if (btnTopics) btnTopics.classList.add('active');
+        if (btnMatrix) btnMatrix.classList.remove('active');
+        if (dock && state.selectedArticlesMap.size > 0) {
+            dock.classList.add('active');
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (tabName === 'preview') {
-        if (tabTopics) tabTopics.classList.remove('active');
-        if (tabPreview) tabPreview.classList.add('active');
+    } else if (tabName === 'matrix' || tabName === 'preview') {
+        if (viewMatrix) viewMatrix.classList.add('active');
         if (viewTopics) viewTopics.classList.remove('active');
-        if (viewPreview) viewPreview.classList.add('active');
-        if (topBar) topBar.classList.add('active');
+        if (btnMatrix) btnMatrix.classList.add('active');
+        if (btnTopics) btnTopics.classList.remove('active');
+        if (dock) dock.classList.remove('active');
+
+        const badge = document.getElementById('previewDot');
+        if (badge) badge.classList.remove('active');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     refreshIcons();
@@ -55,6 +60,7 @@ export function clearTopicInput() {
     const input = document.getElementById('mobileTopicInput');
     if (input) {
         input.value = '';
+        input.style.height = 'auto';
         input.style.borderColor = 'var(--border)';
     }
     state.selectedArticlesMap.clear();
@@ -62,12 +68,17 @@ export function clearTopicInput() {
     showToast('已清空选题内容与选中的情报', 'info');
 }
 
+// 触发多选生成
+export function triggerMultiSelectGenerate() {
+    triggerMobileGenerate();
+}
+
 // 快速换肤与重排
 export async function switchThemeQuick(themeKey, btnEl) {
     document.querySelectorAll('.theme-quick-btn').forEach(b => b.classList.remove('active'));
     if (btnEl) btnEl.classList.add('active');
 
-    const previewBody = document.getElementById('previewHtmlBody');
+    const previewBody = document.getElementById('mobilePreviewContent');
     if (!previewBody || !previewBody.innerHTML.trim()) {
         showToast('请先生成文章后再切换视觉排版', 'warning');
         return;
@@ -114,7 +125,7 @@ export async function triggerMobilePublish() {
     }
 }
 
-// 全局命名空间挂载 (兼顾 HTML 原生 onclick 属性与模块化)
+// 全局命名空间挂载
 window.app = {
     switchMainTab,
     selectCategory,
@@ -124,6 +135,7 @@ window.app = {
     selectAllInCluster,
     selectTopic,
     clearTopicInput,
+    triggerMultiSelectGenerate,
     expandOfficialSources,
     triggerMobileGenerate,
     toggleThinking,
@@ -144,18 +156,15 @@ window.app = {
     refreshIcons
 };
 
+// 全局暴露，确保原生 HTML 属性无缝调用
+Object.assign(window, window.app);
+
 // 页面加载生命周期
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     refreshIcons();
     fetchAndRenderTopics('all', false);
     loadStrategyData();
-
-    // 绑定全局遮罩点击关闭
-    const mask = document.getElementById('sheetMask');
-    if (mask) {
-        mask.addEventListener('click', closeAllSheets);
-    }
 
     // 绑定策略输入框回车发送
     const strategyInput = document.getElementById('strategyChatInput');
@@ -168,6 +177,3 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
-// 全局暴露所有函数，确保原生 HTML onclick 完美调用
-Object.assign(window, window.app);

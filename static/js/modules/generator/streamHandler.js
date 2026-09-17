@@ -50,16 +50,16 @@ export async function triggerMobileGenerate() {
     const timerLabel = document.getElementById('totalTimer');
 
     // UI 状态重置
-    genBtn.disabled = true;
+    if (genBtn) genBtn.disabled = true;
     if (genSpinner) genSpinner.style.display = 'block';
     if (genIcon) genIcon.style.display = 'none';
     if (genText) genText.innerText = '战局推演与长文撰写中...';
-    modal.classList.add('active');
+    if (modal) modal.classList.add('active');
 
-    thinkingText.innerText = '';
-    streamText.innerText = '';
-    statusMsg.innerText = '正在启动智库推演引擎，组织多源战报...';
-    wordCountEl.innerText = '已生成 0 字';
+    if (thinkingText) thinkingText.innerText = '';
+    if (streamText) streamText.innerText = '';
+    if (statusMsg) statusMsg.innerText = '正在启动智库推演引擎，组织多源战报...';
+    if (wordCountEl) wordCountEl.innerText = '已生成 0 字';
     setStepActive(1);
 
     state.startTime = Date.now();
@@ -137,14 +137,18 @@ export async function triggerMobileGenerate() {
                     }
                 } else if (eventType === 'think') {
                     setStepActive(2);
-                    thinkingText.innerText += dataObj.text || '';
-                    thinkingText.scrollTop = thinkingText.scrollHeight;
+                    if (thinkingText) {
+                        thinkingText.innerText += dataObj.text || '';
+                        thinkingText.scrollTop = thinkingText.scrollHeight;
+                    }
                 } else if (eventType === 'content') {
                     setStepActive(3);
-                    streamText.innerText += dataObj.text || '';
-                    streamText.scrollTop = streamText.scrollHeight;
-                    const charLen = streamText.innerText.replace(/\s+/g, '').length;
-                    wordCountEl.innerText = `已生成 ${charLen} 字`;
+                    if (streamText) {
+                        streamText.innerText += dataObj.text || '';
+                        streamText.scrollTop = streamText.scrollHeight;
+                        const charLen = streamText.innerText.replace(/\s+/g, '').length;
+                        if (wordCountEl) wordCountEl.innerText = `已生成 ${charLen} 字`;
+                    }
                 } else if (eventType === 'done') {
                     setStepActive(5);
                     handleGenerationDone(dataObj);
@@ -160,7 +164,7 @@ export async function triggerMobileGenerate() {
         showToast('生成请求异常: ' + e.message, 'error');
         if (statusMsg) statusMsg.innerText = '推演中断: ' + e.message;
     } finally {
-        genBtn.disabled = false;
+        if (genBtn) genBtn.disabled = false;
         if (genSpinner) genSpinner.style.display = 'none';
         if (genIcon) genIcon.style.display = 'inline-block';
         if (genText) genText.innerText = '开始深度研判并生成推文';
@@ -174,23 +178,24 @@ export function handleGenerationDone(data) {
     const mockTitle = document.getElementById('previewMockTitle');
     if (mockTitle) mockTitle.innerText = data.title;
 
-    const previewBody = document.getElementById('previewHtmlBody');
+    const previewBody = document.getElementById('mobilePreviewContent');
     if (previewBody) {
         previewBody.innerHTML = data.wechat_html;
     }
 
-    // 填充矩阵脚本
-    const dyEl = document.getElementById('matrixDouyinText');
-    if (dyEl) dyEl.innerText = data.douyin_script || '暂无矩阵脚本';
+    const dyEl = document.getElementById('douyinScriptText');
+    if (dyEl) dyEl.value = data.douyin_script || '暂无矩阵脚本';
 
-    const xhsEl = document.getElementById('matrixXiaohongshuText');
-    if (xhsEl) xhsEl.innerText = data.xiaohongshu_note || '暂无小红书图文笔记';
+    const xhsEl = document.getElementById('xiaohongshuNoteText');
+    if (xhsEl) xhsEl.value = data.xiaohongshu_note || '暂无小红书图文笔记';
 
     // 隐藏进度弹层
     const modal = document.getElementById('progressModal');
     if (modal) modal.classList.remove('active');
 
-    // 自动切换到预览 Tab
-    window.app.switchMainTab('preview');
+    // 自动切换到矩阵排版 Tab
+    if (window.app && window.app.switchMainTab) {
+        window.app.switchMainTab('matrix');
+    }
     showToast('🎉 智库深度研报生成完毕！', 'success');
 }

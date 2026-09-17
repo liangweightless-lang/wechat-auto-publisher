@@ -21,33 +21,37 @@ export function setTheme(theme) {
         btn.innerHTML = theme === 'dark'
             ? '<i data-lucide="sun" style="width: 17px; height: 17px;"></i>'
             : '<i data-lucide="moon" style="width: 17px; height: 17px;"></i>';
-        refreshIcons();
     }
+    const icon = document.getElementById('themeLucideIcon');
+    if (icon) {
+        icon.setAttribute('data-lucide', theme === 'dark' ? 'sun' : 'moon');
+    }
+    refreshIcons();
 }
 
 export function openBottomSheet(sheetId) {
-    const mask = document.getElementById('sheetMask');
     const sheet = document.getElementById(sheetId);
-    if (mask && sheet) {
-        mask.classList.add('active');
-        sheet.classList.add('active');
-        document.body.style.overflow = 'hidden';
+    const backdrop = document.getElementById(sheetId + 'Backdrop');
+    if (sheet) sheet.classList.add('active');
+    if (backdrop) backdrop.classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    if (sheetId === 'historySheet' && window.app && window.app.loadHistoryArticles) {
+        window.app.loadHistoryArticles();
     }
+    refreshIcons();
 }
 
 export function closeBottomSheet(sheetId) {
-    const mask = document.getElementById('sheetMask');
     const sheet = document.getElementById(sheetId);
-    if (mask && sheet) {
-        mask.classList.remove('active');
-        sheet.classList.remove('active');
-        document.body.style.overflow = '';
-    }
+    const backdrop = document.getElementById(sheetId + 'Backdrop');
+    if (sheet) sheet.classList.remove('active');
+    if (backdrop) backdrop.classList.remove('active');
+    document.body.style.overflow = '';
 }
 
 export function closeAllSheets() {
-    const mask = document.getElementById('sheetMask');
-    if (mask) mask.classList.remove('active');
-    document.querySelectorAll('.bottom-sheet').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.mobile-bottom-sheet').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.sheet-backdrop').forEach(b => b.classList.remove('active'));
     document.body.style.overflow = '';
 }

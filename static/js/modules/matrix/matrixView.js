@@ -52,16 +52,16 @@ export function copyActiveContent() {
     let content = '';
     let name = '';
     if (state.currentActivePlatform === 'wechat') {
-        const previewBox = document.getElementById('previewHtmlBody');
+        const previewBox = document.getElementById('mobilePreviewContent');
         content = previewBox ? previewBox.innerText : '';
         name = '微信长文';
     } else if (state.currentActivePlatform === 'douyin') {
-        const dy = document.getElementById('matrixDouyinText');
-        content = dy ? dy.innerText : '';
+        const dy = document.getElementById('douyinScriptText');
+        content = dy ? dy.value : '';
         name = '抖音短视频脚本';
     } else if (state.currentActivePlatform === 'xiaohongshu') {
-        const xhs = document.getElementById('matrixXiaohongshuText');
-        content = xhs ? xhs.innerText : '';
+        const xhs = document.getElementById('xiaohongshuNoteText');
+        content = xhs ? xhs.value : '';
         name = '小红书图文笔记';
     }
 
