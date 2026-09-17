@@ -127,26 +127,47 @@ export function renderClusters(clusters) {
         const isOpen = cIdx === 0;
         const sourcesText = (cluster.sources || []).map(s => s.replace(/[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF]/g, '').trim()).slice(0, 3).join(' · ');
 
+        const CATEGORY_MAP = {
+            'all': '综合焦点',
+            'military_hot': '军事焦点',
+            'weapons': '先进装备',
+            'relations': '大国博弈',
+            'regional_intel': '区域态势'
+        };
+        const hasOfficial = (cluster.items || []).some(it => it.is_official);
+        const rawCat = cluster.category || 'military_hot';
+        const displayCat = hasOfficial ? '官方权威' : (CATEGORY_MAP[rawCat] || '综合焦点');
+        const isSingle = (cluster.topic_count || (cluster.items ? cluster.items.length : 1)) <= 1;
+        const showSubPreview = !isSingle && cluster.main_title && cluster.main_title !== cluster.cluster_name;
+
         html += `
         <div class="cluster-card ${isOpen ? 'open' : ''}" id="clusterCard_${cluster.cluster_id}">
             <div class="cluster-header" onclick="window.app.toggleCluster('${cluster.cluster_id}')">
-                <div class="cluster-title-col">
-                    <div class="cluster-name-row">
-                        <span class="cluster-tag">${cluster.category || '综合焦点'}</span>
-                        <span class="cluster-name">${cluster.cluster_name}</span>
+                <!-- 顶部元信息栏 (独立一行横向两端对齐，彻底释放标题宽度) -->
+                <div class="cluster-meta-top-row">
+                    <div class="cluster-meta-left">
+                        <span class="cluster-tag ${hasOfficial ? 'official' : ''}">
+                            ${hasOfficial ? '<i data-lucide="shield-check" style="width: 10px; height: 10px;"></i>' : ''}
+                            <span>${displayCat}</span>
+                        </span>
+                        <span class="cluster-time-pill">
+                            <i data-lucide="clock-3" style="width: 10px; height: 10px;"></i>
+                            <span>${cluster.latest_time || '今日最新'}</span>
+                        </span>
                     </div>
-                    <div class="cluster-main-preview">${cluster.main_title}</div>
+                    <div class="cluster-meta-right">
+                        <span class="cluster-count-badge">
+                            <i data-lucide="layers-2" style="width: 11px; height: 11px;"></i>
+                            <span>${cluster.topic_count} 篇</span>
+                        </span>
+                        <i data-lucide="chevron-down" class="cluster-arrow-icon"></i>
+                    </div>
                 </div>
-                <div class="cluster-meta-right">
-                    <span class="cluster-time-pill">
-                        <i data-lucide="clock-3" style="width: 11px; height: 11px;"></i>
-                        <span>${cluster.latest_time || '今日最新'}</span>
-                    </span>
-                    <span class="cluster-count-badge">
-                        <i data-lucide="layers-2" style="width: 12px; height: 12px;"></i>
-                        <span>${cluster.topic_count} 篇</span>
-                    </span>
-                    <i data-lucide="chevron-down" class="cluster-arrow-icon"></i>
+
+                <!-- 主事件大标题 (独占整行宽度，自然舒展，绝不挤成两三字窄柱) -->
+                <div class="cluster-main-title-block">
+                    <h3 class="cluster-heading">${cluster.cluster_name}</h3>
+                    ${showSubPreview ? `<p class="cluster-sub-preview">${cluster.main_title}</p>` : ''}
                 </div>
             </div>
             <div class="cluster-body" id="clusterBody_${cluster.cluster_id}">
