@@ -1,4 +1,5 @@
 // SQLite 历史智库文库自闭环组件 (Self-contained History View Component)
+import { state } from '../../store/state.js';
 import { historyApi } from '../../api/historyApi.js';
 import { refreshIcons } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
@@ -115,6 +116,8 @@ export async function loadHistoryArticleDetail(id) {
         if (data.code === 200 && data.article) {
             const art = data.article;
             state.currentGeneratedData = art;
+            state.currentArticleId = art.id;
+
             const titleEl = document.getElementById('previewMockTitle');
             if (titleEl) titleEl.innerText = art.title;
 
@@ -128,11 +131,16 @@ export async function loadHistoryArticleDetail(id) {
             if (xhsEl) xhsEl.value = art.xiaohongshu_note || '暂无小红书图文笔记';
 
             closeHistoryDrawer();
-            window.app.switchMainTab('matrix');
+            if (window.app && window.app.switchMainTab) {
+                window.app.switchMainTab('matrix');
+            }
             showToast('已调出历史研报全文！', 'success');
+        } else {
+            showToast(data?.message || '调阅失败: 未找到指定文章', 'warning');
         }
     } catch (e) {
-        showToast('调阅详情异常', 'error');
+        console.error('调阅详情失败:', e);
+        showToast('调阅详情异常: ' + (e.message || e), 'error');
     }
 }
 
