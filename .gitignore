@@ -27,3 +27,9 @@ publisher.log
 .DS_Store
 .idea/
 .vscode/
+
+# 运行时动态生成的临时文章配图 (保留默认底图和地图库)
+assets/tactical_situation.jpg
+assets/article_cover.jpg
+assets/flux_illustration.jpg
+assets/tactical_infographic.jpg
