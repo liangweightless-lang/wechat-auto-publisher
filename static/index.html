@@ -4,271 +4,385 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>局势洞见 · 微信公众号创作工作台</title>
-    <!-- Lucide 现代极简图标 CDN (免构建链) -->
+    <!-- Lucide 现代极简矢量图标库 -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=3.5">
+    <link rel="stylesheet" href="/static/css/style.css?v=4.0">
 </head>
 <body>
 
-    <!-- 顶部原生式状态栏 -->
-    <header class="app-header">
-        <div class="header-brand">
-            <div class="brand-logo">局</div>
-            <div>
-                <div class="brand-text" onclick="handleTitleClick()" title="连续点击3次开启Prompt核心配置" style="cursor: pointer;">局势洞见</div>
+    <!-- iOS 风格顶部沉浸式导航栏 -->
+    <header class="mobile-navbar">
+        <div class="navbar-left">
+            <div class="app-logo-badge">局</div>
+            <div class="navbar-title-wrap">
+                <span class="navbar-title">局势洞见</span>
+                <span class="navbar-version">智库 V3.5</span>
             </div>
         </div>
-        <div class="header-actions">
-            <!-- 历史文库入口 (SQLite 单文件持久化) -->
-            <button class="header-action-btn" onclick="openHistoryDrawer()" title="查看已沉淀的 SQLite 历史文库">
-                <i data-lucide="archive" style="width: 14px; height: 14px;"></i>
-                <span>智库文库</span>
+        <div class="navbar-actions">
+            <button class="icon-action-btn" onclick="toggleTheme()" title="切换昼夜模式">
+                <i data-lucide="sun" id="themeLucideIcon" style="width: 17px; height: 17px;"></i>
             </button>
-            <div class="theme-toggle-btn" onclick="toggleTheme()" title="切换日间/夜间模式">
-                <span id="themeIcon">☀️</span>
-            </div>
+            <button class="icon-action-btn" onclick="openBottomSheet('promptSheet')" title="智库 Prompt 配置">
+                <i data-lucide="sliders-horizontal" style="width: 17px; height: 17px;"></i>
+            </button>
         </div>
     </header>
 
-    <!-- 主流悬浮分段导航 -->
-    <div class="nav-segment-container">
-        <div class="nav-segment">
-            <div class="segment-btn active" id="tabNavEdit" onclick="switchView('edit')">
-                <span>🎯 选题与配置</span>
+    <!-- 主容器内容区 (底部留出安全区) -->
+    <main class="mobile-main-container">
+
+        <!-- ======================= 视图 1: 发现选题与研判配置 ======================= -->
+        <div class="tab-view active" id="tabViewTopics">
+
+            <!-- 智库报告导入轻量卡片 -->
+            <div class="mobile-card">
+                <div class="mobile-card-header">
+                    <div class="card-title-group">
+                        <i data-lucide="file-up" class="card-title-icon"></i>
+                        <span class="card-title-text">智库报告 / 战史素材导入</span>
+                    </div>
+                    <span class="card-header-badge">PDF / TXT</span>
+                </div>
+                <input type="file" id="mobileFileInput" accept=".pdf,.txt" style="display: none;" onchange="handleMobileFile(this)">
+                <div class="mobile-upload-well" onclick="document.getElementById('mobileFileInput').click()">
+                    <div class="upload-icon-circle">
+                        <i data-lucide="upload-cloud" style="width: 20px; height: 20px;"></i>
+                    </div>
+                    <div class="upload-well-texts">
+                        <div class="upload-well-primary" id="mobileFileLabel">轻点导入权威智库报告</div>
+                        <div class="upload-well-secondary">自动解析数据图表、战术时间线与事件脉络</div>
+                    </div>
+                </div>
             </div>
-            <div class="segment-btn" id="tabNavPreview" onclick="switchView('preview')">
-                <span>📖 排版预览与矩阵</span>
-                <div class="dot-badge" id="previewDot"></div>
+
+            <!-- 全球防务情报榜单 -->
+            <div class="mobile-card">
+                <div class="mobile-card-header">
+                    <div class="card-title-group">
+                        <i data-lucide="globe-2" class="card-title-icon"></i>
+                        <span class="card-title-text">全球防务与官方公告榜</span>
+                    </div>
+                    <button class="card-refresh-btn" onclick="loadHotTopics(currentCategory)">
+                        <i data-lucide="rotate-cw" style="width: 13px; height: 13px;"></i>
+                        <span>刷新</span>
+                    </button>
+                </div>
+
+                <!-- 垂直选题方向滑动胶囊 (无滚动条惯性滑动) -->
+                <div class="category-scroll-strip">
+                    <button class="category-pill active" onclick="selectCategory('all', this)">
+                        <i data-lucide="radar" class="pill-icon"></i>
+                        <span>全部焦点</span>
+                    </button>
+                    <button class="category-pill" onclick="selectCategory('military_hot', this)">
+                        <i data-lucide="shield-alert" class="pill-icon"></i>
+                        <span>国际军事</span>
+                    </button>
+                    <button class="category-pill" onclick="selectCategory('relations', this)">
+                        <i data-lucide="handshake" class="pill-icon"></i>
+                        <span>国际关系</span>
+                    </button>
+                    <button class="category-pill" onclick="selectCategory('weapons', this)">
+                        <i data-lucide="rocket" class="pill-icon"></i>
+                        <span>先进武器</span>
+                    </button>
+                    <button class="category-pill" onclick="selectCategory('regional_intel', this)">
+                        <i data-lucide="map-pin" class="pill-icon"></i>
+                        <span>区域舆情</span>
+                    </button>
+                </div>
+
+                <!-- 动态热搜榜单列表 -->
+                <div class="topic-feed-list" id="mobileHotList">
+                    <div class="feed-empty-state">
+                        <i data-lucide="loader-2" class="spin-icon" style="width: 22px; height: 22px;"></i>
+                        <span>正在拉取2026最新战略情报与官方战报...</span>
+                    </div>
+                </div>
+
+                <!-- 研判输入区域 -->
+                <div class="mobile-input-section">
+                    <div class="input-header-row">
+                        <div class="input-title-with-icon">
+                            <i data-lucide="sparkles" style="width: 14px; height: 14px; color: var(--primary);"></i>
+                            <span>焦点研判指示：</span>
+                        </div>
+                        <button type="button" class="input-clear-btn" onclick="clearTopicInput()">
+                            <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                            <span>清空</span>
+                        </button>
+                    </div>
+                    <textarea class="mobile-textarea" id="mobileTopicInput" rows="3"
+                        oninput="autoResizeTextarea(this)"
+                        placeholder="轻点上方榜单填入，或直接输入研判事件线索..."></textarea>
+                    <div id="charCount" class="char-counter">0 字</div>
+                </div>
+            </div>
+
+            <!-- 视觉与排版定制卡片 -->
+            <div class="mobile-card">
+                <div class="mobile-card-header">
+                    <div class="card-title-group">
+                        <i data-lucide="palette" class="card-title-icon"></i>
+                        <span class="card-title-text">排版主题与 AI 视觉场景</span>
+                    </div>
+                </div>
+                <div class="mobile-config-rows">
+                    <div class="mobile-config-row">
+                        <div class="config-row-label">
+                            <i data-lucide="layout-template" style="width: 15px; height: 15px; color: var(--primary);"></i>
+                            <span>图文排版风格</span>
+                        </div>
+                        <select class="mobile-select" id="themeSelect">
+                            <option value="think_tank" selected>🏛️ 权威智库风 (藏青与酒红)</option>
+                            <option value="defense_tech">⚡ 硬核防务风 (战术碳素黑与橙)</option>
+                            <option value="geopolitics">🌐 地缘博弈风 (墨绿与古铜金)</option>
+                            <option value="breaking">🚨 战地特稿风 (赤红警报大标)</option>
+                        </select>
+                    </div>
+                    <div class="mobile-config-row">
+                        <div class="config-row-label">
+                            <i data-lucide="camera" style="width: 15px; height: 15px; color: var(--primary);"></i>
+                            <span>AI 视觉场景出图</span>
+                        </div>
+                        <select class="mobile-select" id="imageStyleSelect">
+                            <option value="photojournalism" selected>📸 战地纪实特写 (35mm胶片质感)</option>
+                            <option value="tactical_macro">🔍 装备精密微距 (雷达与隐身涂层)</option>
+                            <option value="c4isr_command">🖥️ 联合指挥全息 (多域沙盘大屏)</option>
+                            <option value="satellite_recon">🛰️ 卫星遥感侦察 (SAR合成孔径)</option>
+                            <option value="infographic">📊 智库特刊大图 (双色调推演大图)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 启动生成大按钮 (移动端大圆角按钮带弹性反馈) -->
+            <div class="primary-action-wrap">
+                <button class="mobile-primary-btn" id="mobileGenBtn" onclick="triggerMobileGenerate()">
+                    <div class="spinner" id="mobileGenSpinner"></div>
+                    <i data-lucide="play" id="mobileGenIcon" style="width: 18px; height: 18px;"></i>
+                    <span id="mobileGenText">开始深度研判并生成推文</span>
+                </button>
             </div>
         </div>
-    </div>
 
-    <!-- 1. 选题与生成视图 -->
-    <div class="view-pane active" id="viewEdit">
+        <!-- ======================= 视图 2: 多平台矩阵工坊与预览 ======================= -->
+        <div class="tab-view" id="tabViewMatrix">
 
-        <!-- 报告/素材导入卡片 -->
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">📁 智库报告 / 原始资料导入</div>
-                <div class="card-subtext">支持 PDF / TXT</div>
+            <!-- 平台胶囊切换器 (微信 / 抖音 / 小红书) -->
+            <div class="matrix-pills-bar">
+                <button class="matrix-pill active" id="tabBtnWechat" onclick="switchPlatform('wechat')">
+                    <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
+                    <span>微信图文长文</span>
+                </button>
+                <button class="matrix-pill" id="tabBtnDouyin" onclick="switchPlatform('douyin')">
+                    <i data-lucide="video" style="width: 14px; height: 14px;"></i>
+                    <span>抖音短视频脚本</span>
+                </button>
+                <button class="matrix-pill" id="tabBtnXiaohongshu" onclick="switchPlatform('xiaohongshu')">
+                    <i data-lucide="book-open" style="width: 14px; height: 14px;"></i>
+                    <span>小红书爆款笔记</span>
+                </button>
             </div>
-            <input type="file" id="mobileFileInput" accept=".pdf,.txt" style="display: none;" onchange="handleMobileFile(this)">
-            <div class="upload-box" onclick="document.getElementById('mobileFileInput').click()">
-                <div style="font-size: 24px;">📑</div>
-                <div class="upload-box-title" id="mobileFileLabel">点击导入本地 PDF 智库报告</div>
-                <div class="upload-box-desc">自动解析报告内容、数据图表与时间线</div>
+
+            <!-- 微信长文实时换肤工具条 -->
+            <div class="theme-quick-bar" id="themeQuickBar">
+                <div class="theme-quick-title">
+                    <i data-lucide="swatch-book" style="width: 14px; height: 14px;"></i>
+                    <span>一键换肤：</span>
+                </div>
+                <div class="theme-quick-chips">
+                    <button class="theme-chip active" onclick="switchThemeQuick('think_tank', this)">智库风</button>
+                    <button class="theme-chip" onclick="switchThemeQuick('defense_tech', this)">防务风</button>
+                    <button class="theme-chip" onclick="switchThemeQuick('geopolitics', this)">地缘风</button>
+                    <button class="theme-chip" onclick="switchThemeQuick('breaking', this)">战地风</button>
+                </div>
+                <button class="theme-reimage-btn" onclick="triggerRegenerateImage()" title="按选定风格重绘配图与封面">
+                    <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i>
+                    <span>重绘配图</span>
+                </button>
+            </div>
+
+            <!-- 工具统计与一键复制条 -->
+            <div class="preview-actions-bar">
+                <div class="preview-stat-item">
+                    <i data-lucide="align-left" style="width: 13px; height: 13px; color: var(--text-muted);"></i>
+                    <span id="statWordCount">篇幅待生成</span>
+                </div>
+                <button class="copy-action-btn" id="copyActiveContentBtn" onclick="copyActiveContent()">
+                    <i data-lucide="copy" style="width: 13px; height: 13px;"></i>
+                    <span>复制内容</span>
+                </button>
+            </div>
+
+            <!-- 平台 1: 仿微信文章仿真纸张容器 -->
+            <div class="platform-pane active" id="paneWechat">
+                <div class="wechat-mobile-card">
+                    <div class="mock-article-header">
+                        <div class="mock-title" id="previewMockTitle">文章标题待生成</div>
+                        <div class="mock-author-row">
+                            <span class="mock-author-name">局势洞见研判组</span>
+                            <span class="dot-sep">·</span>
+                            <span class="mock-tag-text">原创战略智库</span>
+                            <span class="dot-sep">·</span>
+                            <span class="mock-time" id="previewMockTime">今日</span>
+                        </div>
+                    </div>
+                    <div id="mobilePreviewContent" class="wechat-html-body">
+                        <div class="preview-placeholder">
+                            <i data-lucide="newspaper" style="width: 38px; height: 38px; stroke-width: 1.3; color: var(--text-muted);"></i>
+                            <div class="placeholder-title">暂无生成推文</div>
+                            <div class="placeholder-sub">请在底栏「发现选题」选定话题后轻点生成</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 平台 2: 抖音短视频解说脚本容器 -->
+            <div class="platform-pane" id="paneDouyin">
+                <div class="script-mobile-card">
+                    <div class="script-banner-header">
+                        <div class="script-badge-tag">
+                            <i data-lucide="clapperboard" style="width: 12px; height: 12px;"></i>
+                            <span>75-90秒 解说视频脚本</span>
+                        </div>
+                        <span class="script-sub-hint">含黄金5秒悬念钩子与分镜头视觉指引</span>
+                    </div>
+                    <textarea class="mobile-script-textarea" id="douyinScriptText" readonly placeholder="推文生成完成后，将自动输出具有高完播率的抖音分镜头解说脚本..."></textarea>
+                </div>
+            </div>
+
+            <!-- 平台 3: 小红书爆款图文笔记容器 -->
+            <div class="platform-pane" id="paneXiaohongshu">
+                <div class="script-mobile-card">
+                    <div class="script-banner-header">
+                        <div class="script-badge-tag xhs-badge">
+                            <i data-lucide="bookmark" style="width: 12px; height: 12px;"></i>
+                            <span>小红书高赞图文笔记</span>
+                        </div>
+                        <span class="script-sub-hint">含反差爆款标题、Emoji清单化与热门标签</span>
+                    </div>
+                    <textarea class="mobile-script-textarea" id="xiaohongshuNoteText" readonly placeholder="推文生成完成后，将自动生成小红书爆款图文笔记..."></textarea>
+                </div>
+            </div>
+
+            <!-- 吸底发布操作栏 (在排版预览界面吸底) -->
+            <div class="wechat-push-dock">
+                <button class="wechat-dock-btn" id="mobilePublishBtn" onclick="triggerMobilePublish()">
+                    <div class="spinner" id="mobilePubSpinner"></div>
+                    <i data-lucide="send" id="mobilePubIcon" style="width: 17px; height: 17px;"></i>
+                    <span id="mobilePubText">一键推送到微信公众号草稿箱</span>
+                </button>
             </div>
         </div>
 
-        <!-- 多源情报榜单 (国际军事/国际关系/先进武器/区域舆情) -->
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">🌐 全球防务与官方公告榜</div>
-                <div class="card-subtext" onclick="loadHotTopics(currentCategory)" style="color: var(--primary); cursor: pointer;">
-                    🔄 刷新榜单
-                </div>
-            </div>
+    </main>
 
-            <!-- 四大垂直选题方向滑动胶囊 -->
-            <div class="tab-scroll-bar">
-                <div class="tab-chip active" onclick="selectCategory('all', this)">🌐 全部焦点</div>
-                <div class="tab-chip" onclick="selectCategory('military_hot', this)">💥 国际军事热点</div>
-                <div class="tab-chip" onclick="selectCategory('relations', this)">🤝 深度国际关系</div>
-                <div class="tab-chip" onclick="selectCategory('weapons', this)">🚀 先进武器追踪</div>
-                <div class="tab-chip" onclick="selectCategory('regional_intel', this)">🗺️ 区域舆情动向</div>
-            </div>
-
-            <!-- 动态热搜榜单列表 -->
-            <div class="topic-list-group" id="mobileHotList">
-                <div style="text-align: center; padding: 24px; font-size: 13px; color: var(--text-muted);">
-                    正在拉取2026最新战略情报与官方通报...
-                </div>
-            </div>
-
-            <!-- 研判输入区域 -->
-            <div class="focus-input-area">
-                <div class="focus-header">
-                    <div class="focus-title">✍️ 焦点研判指引：</div>
-                    <button type="button" class="focus-clear" onclick="clearTopicInput()">✕ 清空</button>
-                </div>
-                <textarea class="input-textarea" id="mobileTopicInput" rows="3"
-                    oninput="autoResizeTextarea(this)"
-                    placeholder="从上方榜单轻点选定，或直接输入焦点事件..."></textarea>
-                <div id="charCount" style="text-align: right; font-size: 11px; color: var(--text-light); margin-top: 4px;">0 字</div>
-            </div>
-        </div>
-
-        <!-- 视觉风格与排版预设配置卡片 -->
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">🎨 排版主题与 AI 视觉场景</div>
-                <div class="card-subtext">告别单一死板</div>
-            </div>
-            <div class="preset-selectors-grid">
-                <div class="preset-field">
-                    <label class="preset-label">微信图文排版主题：</label>
-                    <select class="preset-select" id="themeSelect">
-                        <option value="think_tank" selected>🏛️ 权威智库风 (兰德/外刊·藏青酒红)</option>
-                        <option value="defense_tech">⚡ 硬核防务风 (简氏防务·战术碳橙)</option>
-                        <option value="geopolitics">🌐 地缘博弈风 (彭博周刊·墨绿古铜金)</option>
-                        <option value="breaking">🚨 战地特稿风 (战地特刊·赤红警报)</option>
-                    </select>
-                </div>
-                <div class="preset-field">
-                    <label class="preset-label">AI 视觉出图场景风格：</label>
-                    <select class="preset-select" id="imageStyleSelect">
-                        <option value="photojournalism" selected>📸 战地纪实特写 (路透/普利策35mm)</option>
-                        <option value="tactical_macro">🔍 装备精密微距 (雷达吸波与铆钉特写)</option>
-                        <option value="c4isr_command">🖥️ 联合指挥全息 (多域战态势沙盘)</option>
-                        <option value="satellite_recon">🛰️ 卫星遥感侦察 (SAR雷达/红外侦察)</option>
-                        <option value="infographic">📊 智库特刊大图 (极简双色调推演大图)</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- 启动生成大按钮 -->
-        <button class="btn-start-generate" id="mobileGenBtn" onclick="triggerMobileGenerate()">
-            <div class="spinner" id="mobileGenSpinner"></div>
-            <span id="mobileGenText">🚀 开始深度研判并生成矩阵资产</span>
+    <!-- ======================= iOS 原生毛玻璃底部导航栏 (Bottom Navigation Bar) ======================= -->
+    <nav class="mobile-bottom-tabbar">
+        <button class="tabbar-item active" id="tabNavTopics" onclick="switchMainTab('topics')">
+            <i data-lucide="compass" class="tabbar-icon"></i>
+            <span class="tabbar-label">发现选题</span>
         </button>
-    </div>
+        <button class="tabbar-item" id="tabNavMatrix" onclick="switchMainTab('matrix')">
+            <i data-lucide="layers" class="tabbar-icon"></i>
+            <span class="tabbar-label">矩阵排版</span>
+            <div class="tabbar-badge" id="previewDot"></div>
+        </button>
+        <button class="tabbar-item" id="tabNavHistory" onclick="openBottomSheet('historySheet')">
+            <i data-lucide="archive" class="tabbar-icon"></i>
+            <span class="tabbar-label">智库文库</span>
+        </button>
+        <button class="tabbar-item" id="tabNavSettings" onclick="openBottomSheet('promptSheet')">
+            <i data-lucide="sliders" class="tabbar-icon"></i>
+            <span class="tabbar-label">智库配置</span>
+        </button>
+    </nav>
 
-    <!-- 2. 多平台矩阵创作与预览视图 (微信 / 抖音 / 小红书) -->
-    <div class="view-pane" id="viewPreview">
-        <!-- 矩阵平台切换器 -->
-        <div class="matrix-platform-tabs">
-            <button class="matrix-tab-btn active" id="tabBtnWechat" onclick="switchPlatform('wechat')">
-                <span>📱 微信公众号长文</span>
-            </button>
-            <button class="matrix-tab-btn" id="tabBtnDouyin" onclick="switchPlatform('douyin')">
-                <span>🎵 抖音短视频脚本</span>
-            </button>
-            <button class="matrix-tab-btn" id="tabBtnXiaohongshu" onclick="switchPlatform('xiaohongshu')">
-                <span>📕 小红书爆款笔记</span>
-            </button>
-        </div>
-
-        <!-- 主题即时动态换肤工具条 (仅在微信长文预览下生效) -->
-        <div class="theme-quick-bar" id="themeQuickBar">
-            <div class="theme-quick-label">
-                <i data-lucide="palette" style="width: 14px; height: 14px;"></i>
-                <span>排版换肤：</span>
-            </div>
-            <div class="theme-quick-chips">
-                <button class="theme-chip active" onclick="switchThemeQuick('think_tank', this)">🏛️ 权威智库</button>
-                <button class="theme-chip" onclick="switchThemeQuick('defense_tech', this)">⚡ 硬核防务</button>
-                <button class="theme-chip" onclick="switchThemeQuick('geopolitics', this)">🌐 地缘博弈</button>
-                <button class="theme-chip" onclick="switchThemeQuick('breaking', this)">🚨 战地特稿</button>
-            </div>
-            <button class="theme-reimage-btn" onclick="triggerRegenerateImage()" title="按当前选定风格重新生成配图与封面">
-                <i data-lucide="image" style="width: 13px; height: 13px;"></i>
-                <span>重绘配图</span>
-            </button>
-        </div>
-
-        <div class="preview-tool-bar">
-            <div>
-                <span style="color: var(--text-muted);">篇幅统计: </span>
-                <strong id="statWordCount" style="color: var(--primary);">待生成</strong>
-            </div>
-            <button class="tool-btn" id="copyActiveContentBtn" onclick="copyActiveContent()">
-                📋 一键复制当前内容
-            </button>
-        </div>
-
-        <!-- 平台 1: 仿真微信文章纸张容器 -->
-        <div class="platform-pane active" id="paneWechat">
-            <div class="wechat-mock-container">
-                <div class="mock-article-header">
-                    <div class="mock-title" id="previewMockTitle">文章标题待生成</div>
-                    <div class="mock-author-row">
-                        <span class="mock-author-name">局势洞见研判组</span>
-                        <span style="color: #cbd5e1;">·</span>
-                        <span style="color: #576b95;">原创智库</span>
-                        <span style="color: #cbd5e1;">·</span>
-                        <span class="mock-time" id="previewMockTime">今日</span>
-                    </div>
-                </div>
-                <div id="mobilePreviewContent">
-                    <div style="text-align: center; padding: 80px 20px; color: #94a3b8;">
-                        <div style="font-size: 40px; margin-bottom: 12px;">📰</div>
-                        <div style="font-weight: 600; font-size: 15px; color: #475569;">暂无生成内容</div>
-                        <div style="font-size: 12px; color: #94a3b8; margin-top: 6px;">请在「选题与配置」中选定话题后点击生成</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 平台 2: 抖音短视频解说脚本容器 -->
-        <div class="platform-pane" id="paneDouyin">
-            <div class="script-card-container">
-                <div class="script-badge-bar">
-                    <span class="script-badge-tag">🎬 75-90秒解说视频脚本</span>
-                    <span style="font-size: 11px; color: var(--text-muted);">含黄金5秒悬念钩子、分镜头提示与完播互动词</span>
-                </div>
-                <textarea class="matrix-script-textarea" id="douyinScriptText" readonly placeholder="研判生成完成后，将自动生成抖音分镜头短视频解说脚本..."></textarea>
-            </div>
-        </div>
-
-        <!-- 平台 3: 小红书爆款图文笔记容器 -->
-        <div class="platform-pane" id="paneXiaohongshu">
-            <div class="script-card-container">
-                <div class="script-badge-bar">
-                    <span class="script-badge-tag xhs-tag">📕 小红书高点赞图文笔记</span>
-                    <span style="font-size: 11px; color: var(--text-muted);">含反差标题、Emoji清单化痛点、干货速览与爆款标签</span>
-                </div>
-                <textarea class="matrix-script-textarea" id="xiaohongshuNoteText" readonly placeholder="研判生成完成后，将自动派生小红书爆款图文笔记..."></textarea>
-            </div>
-        </div>
-    </div>
-
-    <!-- 底部固定吸底栏 (随选定平台智能切换行动) -->
-    <div class="fixed-bottom-bar">
-        <div class="fixed-bottom-inner">
-            <button class="btn-wechat-push" id="mobilePublishBtn" onclick="triggerMobilePublish()">
-                <div class="spinner" id="mobilePubSpinner"></div>
-                <span id="mobilePubText">📤 一键推送到微信公众号草稿箱</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- 智库历史文库侧边抽屉 (SQLite 数据库管理) -->
-    <div class="drawer-mask" id="historyDrawerMask" onclick="closeHistoryDrawer()"></div>
-    <div class="history-drawer" id="historyDrawer">
-        <div class="drawer-header">
-            <div class="drawer-title">
+    <!-- ======================= 底部滑起面板 1: SQLite 历史智库文库 (Bottom Sheet) ======================= -->
+    <div class="sheet-backdrop" id="historySheetBackdrop" onclick="closeBottomSheet('historySheet')"></div>
+    <div class="mobile-bottom-sheet" id="historySheet">
+        <div class="sheet-handle-bar" onclick="closeBottomSheet('historySheet')"></div>
+        <div class="sheet-header">
+            <div class="sheet-title-wrap">
                 <i data-lucide="database" style="width: 18px; height: 18px; color: var(--primary);"></i>
-                <span>SQLite 历史智库文库</span>
+                <span class="sheet-title">SQLite 历史智库文库</span>
             </div>
-            <button class="drawer-close-btn" onclick="closeHistoryDrawer()">✕</button>
+            <button class="sheet-close-icon" onclick="closeBottomSheet('historySheet')">
+                <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+            </button>
         </div>
-        <div class="drawer-sub">已沉淀的历史生成推文、配图与多平台矩阵脚本（支持一键调阅恢复）</div>
-        <div class="history-list" id="historyListContainer">
-            <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
-                正在调阅 SQLite 历史库...
+        <div class="sheet-subtitle">已沉淀的历史推文与全矩阵资产（轻点任意篇章即可一键恢复调阅）</div>
+        <div class="sheet-scroll-body" id="historyListContainer">
+            <div class="sheet-loading-state">
+                <i data-lucide="loader-2" class="spin-icon" style="width: 20px; height: 20px;"></i>
+                <span>正在加载 SQLite 历史文库...</span>
             </div>
         </div>
     </div>
 
-    <!-- 流式推演与正文生成中枢模态框 -->
+    <!-- ======================= 底部滑起面板 2: 智库提示词核心配置 (Bottom Sheet) ======================= -->
+    <div class="sheet-backdrop" id="promptSheetBackdrop" onclick="closeBottomSheet('promptSheet')"></div>
+    <div class="mobile-bottom-sheet" id="promptSheet">
+        <div class="sheet-handle-bar" onclick="closeBottomSheet('promptSheet')"></div>
+        <div class="sheet-header">
+            <div class="sheet-title-wrap">
+                <i data-lucide="sliders-horizontal" style="width: 18px; height: 18px; color: var(--primary);"></i>
+                <span class="sheet-title">智库研判 Prompt 配置</span>
+            </div>
+            <button class="sheet-close-icon" onclick="closeBottomSheet('promptSheet')">
+                <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+            </button>
+        </div>
+        <div class="sheet-subtitle">2026年战时时间坐标锚定与四步研判法则（热更新实时生效）</div>
+        <div class="sheet-scroll-body">
+            <div class="sheet-field-group">
+                <label class="sheet-field-label">
+                    <i data-lucide="shield" style="width: 14px; height: 14px; color: var(--primary);"></i>
+                    <span>核心系统设定 (System Prompt)</span>
+                </label>
+                <textarea class="sheet-textarea" id="cfgSystemPrompt" rows="6"></textarea>
+            </div>
+            <div class="sheet-field-group">
+                <label class="sheet-field-label">
+                    <i data-lucide="file-code" style="width: 14px; height: 14px; color: var(--primary);"></i>
+                    <span>用户研判指令模板 (User Template)</span>
+                </label>
+                <textarea class="sheet-textarea" id="cfgUserPromptTemplate" rows="7"></textarea>
+            </div>
+            <div class="sheet-btn-row">
+                <button class="sheet-btn-secondary" onclick="resetPrompts()">
+                    <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
+                    <span>恢复默认</span>
+                </button>
+                <button class="sheet-btn-primary" onclick="savePrompts()">
+                    <i data-lucide="save" style="width: 14px; height: 14px;"></i>
+                    <span>保存配置</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================= 现代化流式思考推演弹层 ======================= -->
     <div class="stepper-mask" id="progressModal">
         <div class="stepper-box">
             <div class="stepper-header">
                 <div class="stepper-title">
-                    <span>🛡️ 智库推演中枢</span>
+                    <i data-lucide="cpu" style="width: 17px; height: 17px; color: var(--primary);"></i>
+                    <span>智库推演中枢</span>
                     <span class="stepper-badge" id="modalEngineBadge">DeepSeek-R1 推理流</span>
                 </div>
-                <div style="font-size: 11px; color: var(--text-light);" id="totalTimer">耗时 0s</div>
+                <div class="stepper-timer" id="totalTimer">耗时 0s</div>
             </div>
 
-            <!-- 5步指示器 -->
+            <!-- 5步流水指示器 -->
             <div class="stepper-steps-compact">
-                <div class="step-chip active" id="step1">1. 战史底座检索</div>
-                <div class="step-chip" id="step2">2. 深度战局推演</div>
-                <div class="step-chip" id="step3">3. 长文流式输出</div>
-                <div class="step-chip" id="step4">4. 场景配图生成</div>
-                <div class="step-chip" id="step5">5. 多主题内联排版</div>
+                <div class="step-chip active" id="step1">1. 战史底座</div>
+                <div class="step-chip" id="step2">2. 局势推演</div>
+                <div class="step-chip" id="step3">3. 长文流式</div>
+                <div class="step-chip" id="step4">4. 场景配图</div>
+                <div class="step-chip" id="step5">5. 主题内联</div>
             </div>
 
             <!-- 思考链面板 -->
@@ -276,20 +390,23 @@
                 <div class="thinking-header" onclick="toggleThinking()">
                     <div class="thinking-title">
                         <span class="thinking-pulse"></span>
-                        <span>深度战局研判推演 (Thinking Process)</span>
+                        <span>战局研判推演 (Thinking Process)</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="font-size: 11px; color: var(--text-light);" id="thinkingTimeLabel">推演中</span>
-                        <span id="thinkingArrow" style="font-size: 10px; color: var(--text-light);">▼</span>
+                    <div class="thinking-toggle-meta">
+                        <span id="thinkingTimeLabel">推演中</span>
+                        <i data-lucide="chevron-down" id="thinkingArrow" style="width: 14px; height: 14px;"></i>
                     </div>
                 </div>
                 <div class="thinking-content" id="thinkingText"></div>
             </div>
 
-            <!-- 长文流式输出卡片 -->
+            <!-- 长文流式卡片 -->
             <div class="stream-content-box">
                 <div class="stream-box-header">
-                    <div class="stream-box-title">✍️ 研判正文流式输出</div>
+                    <div class="stream-box-title">
+                        <i data-lucide="pen-tool" style="width: 13px; height: 13px; color: var(--primary);"></i>
+                        <span>研判正文流式输出</span>
+                    </div>
                     <div class="stream-word-badge" id="streamWordCount">已生成 0 字</div>
                 </div>
                 <div class="stream-content" id="streamText"></div>
@@ -301,46 +418,11 @@
         </div>
     </div>
 
-    <!-- 智库提示词核心配置抽屉 -->
-    <div class="prompt-modal-mask" id="promptModalMask" onclick="closePromptModal(event)">
-        <div class="prompt-modal-content" onclick="event.stopPropagation()">
-            <div class="prompt-modal-header">
-                <div class="prompt-modal-title">⚙️ 智库研判提示词核心配置</div>
-                <button class="prompt-modal-close" onclick="closePromptModal()">✕</button>
-            </div>
-            <div class="prompt-modal-body">
-                <div class="prompt-field-group">
-                    <div class="prompt-field-label">🛡️ 系统核心设定 (System Prompt)</div>
-                    <div class="prompt-field-desc">定义智库身份、2026年战略时间锚定、深度战局推演原则</div>
-                    <textarea class="prompt-textarea" id="cfgSystemPrompt" rows="6"></textarea>
-                </div>
-                <div class="prompt-field-group">
-                    <div class="prompt-field-label">📋 用户研判指令模板 (User Template)</div>
-                    <div class="prompt-field-desc">定义概要事件、起因脉络、硬核细节拆解及战报排版规范</div>
-                    <textarea class="prompt-textarea" id="cfgUserPromptTemplate" rows="7"></textarea>
-                </div>
-            </div>
-            <div class="prompt-modal-footer">
-                <button class="btn-prompt-reset" onclick="resetPrompts()">🔄 恢复智库默认</button>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn-prompt-cancel" onclick="closePromptModal()">取消</button>
-                    <button class="btn-prompt-save" onclick="savePrompts()">💾 保存并生效</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 隐秘配置快捷悬浮球 -->
-    <div class="secret-gear-btn" onclick="openPromptModal()" title="调制智库核心 Prompt (快捷键: Ctrl+Shift+P)">
-        ⚙️
-    </div>
-
-    <!-- 轻量级轻提示 Toast -->
+    <!-- 轻量级手机 Toast 提示条 -->
     <div class="toast-bar" id="mobileToast">提示信息</div>
 
-    <script src="/static/js/app.js?v=3.5"></script>
+    <script src="/static/js/app.js?v=4.0"></script>
     <script>
-        // 初始化 Lucide 图标
         if (window.lucide) {
             lucide.createIcons();
         }
