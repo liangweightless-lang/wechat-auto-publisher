@@ -279,6 +279,18 @@
 
     </main>
 
+    <!-- ======================= 多选同类新闻吸底浮动工具栏 ======================= -->
+    <div class="multi-select-dock" id="multiSelectDock">
+        <div class="dock-left-info">
+            <span class="dock-count-badge" id="selectedCountBadge">0</span>
+            <span class="dock-desc">篇报道已勾选</span>
+        </div>
+        <button class="dock-action-btn" onclick="triggerMultiSelectGenerate()">
+            <i data-lucide="sparkles" style="width: 14px; height: 14px; color: var(--primary);"></i>
+            <span>多源合并研判</span>
+        </button>
+    </div>
+
     <!-- ======================= iOS 原生毛玻璃底部导航栏 (Bottom Navigation Bar) ======================= -->
     <nav class="mobile-bottom-tabbar">
         <button class="tabbar-item active" id="tabNavTopics" onclick="switchMainTab('topics')">

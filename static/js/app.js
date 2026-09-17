@@ -113,22 +113,26 @@ function selectCategory(cat, el) {
     loadHotTopics(cat);
 }
 
+let selectedArticlesMap = new Map();
+let currentClustersData = [];
+
 async function loadHotTopics(cat = 'all') {
     const listEl = document.getElementById('mobileHotList');
     if (!listEl) return;
     listEl.innerHTML = `
         <div class="feed-empty-state">
             <i data-lucide="loader-2" class="spin-icon" style="width: 20px; height: 20px;"></i>
-            <span>正在检索2026战略情报源...</span>
+            <span>正在检索多源情报并智能聚类同类事件...</span>
         </div>
     `;
     refreshIcons();
 
     try {
-        const resp = await fetch(`/api/topics?category=${cat}`);
+        const resp = await fetch(`/api/topics?category=${cat}&clustered=1`);
         const data = await resp.json();
-        if (data && data.topics && data.topics.length > 0) {
-            renderTopics(data.topics);
+        if (data && data.clusters && data.clusters.length > 0) {
+            currentClustersData = data.clusters;
+            renderClusters(data.clusters);
         } else {
             listEl.innerHTML = `
                 <div class="feed-empty-state">
@@ -143,33 +147,164 @@ async function loadHotTopics(cat = 'all') {
     }
 }
 
-function renderTopics(topics) {
+function renderClusters(clusters) {
     const listEl = document.getElementById('mobileHotList');
     if (!listEl) return;
 
     let html = '';
-    topics.forEach((t, idx) => {
-        const source = t.source || '官方通报';
-        const pubTime = t.pub_time || '刚刚';
-        const url = t.url || '';
+    clusters.forEach((cluster, cIdx) => {
+        const isOpen = cIdx === 0; // 默认展开第一个核心专题
+        const sourcesText = (cluster.sources || []).slice(0, 3).join(' · ');
 
         html += `
-        <div class="topic-item-row" onclick="selectTopic(${idx})">
-            <div class="topic-meta-line">
-                <span class="source-badge">
-                    <i data-lucide="rss" style="width: 10px; height: 10px;"></i>
-                    <span>${source}</span>
-                </span>
-                <span class="time-badge">${pubTime}</span>
+        <div class="cluster-card ${isOpen ? 'open' : ''}" id="clusterCard_${cluster.cluster_id}">
+            <div class="cluster-header" onclick="toggleCluster('${cluster.cluster_id}')">
+                <div class="cluster-title-col">
+                    <div class="cluster-name-row">
+                        <span class="cluster-tag">${cluster.category || '综合焦点'}</span>
+                        <span class="cluster-name">${cluster.cluster_name}</span>
+                    </div>
+                    <div class="cluster-main-preview">${cluster.main_title}</div>
+                </div>
+                <div class="cluster-meta-right">
+                    <span class="cluster-count-badge">
+                        <i data-lucide="layers-2" style="width: 12px; height: 12px;"></i>
+                        <span>${cluster.topic_count} 篇</span>
+                    </span>
+                    <i data-lucide="chevron-down" class="cluster-arrow-icon"></i>
+                </div>
             </div>
-            <div class="topic-headline">${t.title}</div>
-            ${url ? `<div style="text-align: right; margin-top: 2px;"><a href="${url}" target="_blank" onclick="event.stopPropagation()" style="font-size: 10.5px; color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><i data-lucide="external-link" style="width: 10px; height: 10px;"></i>出处原文</a></div>` : ''}
+            <div class="cluster-body" id="clusterBody_${cluster.cluster_id}">
+                <div class="cluster-quick-actions">
+                    <span>覆盖源: ${sourcesText}</span>
+                    <button class="select-all-btn" onclick="selectAllInCluster('${cluster.cluster_id}', event)">
+                        <i data-lucide="check-square" style="width: 12px; height: 12px;"></i>
+                        <span>全选本专题</span>
+                    </button>
+                </div>
+                <div class="sub-news-list">
+                    ${renderSubNewsItems(cluster.cluster_id, cluster.items)}
+                </div>
+            </div>
         </div>
         `;
     });
 
-    window._currentTopics = topics;
     listEl.innerHTML = html;
+    refreshIcons();
+}
+
+function renderSubNewsItems(clusterId, items) {
+    let subHtml = '';
+    items.forEach((item, itemIdx) => {
+        const key = `${clusterId}_${itemIdx}`;
+        const isChecked = selectedArticlesMap.has(key);
+        const source = item.source || '官方通报';
+        const pubTime = item.pub_time || '刚刚';
+        const url = item.url || '';
+
+        subHtml += `
+        <div class="sub-news-item ${isChecked ? 'checked' : ''}" id="subItem_${key}" onclick="toggleSelectNews('${clusterId}', ${itemIdx}, event)">
+            <div class="sub-checkbox">
+                ${isChecked ? '<i data-lucide="check" style="width: 12px; height: 12px;"></i>' : ''}
+            </div>
+            <div class="sub-news-body">
+                <div class="sub-news-title">${item.title}</div>
+                <div class="sub-news-meta">
+                    <span>${source}</span>
+                    <span>·</span>
+                    <span>${pubTime}</span>
+                    ${url ? `<span>·</span><a href="${url}" target="_blank" onclick="event.stopPropagation()" style="color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><i data-lucide="external-link" style="width: 10px; height: 10px;"></i>原文</a>` : ''}
+                </div>
+            </div>
+        </div>
+        `;
+    });
+    return subHtml;
+}
+
+function toggleCluster(clusterId) {
+    const card = document.getElementById(`clusterCard_${clusterId}`);
+    if (card) {
+        card.classList.toggle('open');
+        refreshIcons();
+    }
+}
+
+function toggleSelectNews(clusterId, itemIdx, event) {
+    if (event) event.stopPropagation();
+    const cluster = currentClustersData.find(c => c.cluster_id === clusterId);
+    if (!cluster || !cluster.items || !cluster.items[itemIdx]) return;
+
+    const item = cluster.items[itemIdx];
+    const key = `${clusterId}_${itemIdx}`;
+
+    if (selectedArticlesMap.has(key)) {
+        selectedArticlesMap.delete(key);
+    } else {
+        selectedArticlesMap.set(key, item);
+    }
+
+    updateSelectedUI();
+}
+
+function selectAllInCluster(clusterId, event) {
+    if (event) event.stopPropagation();
+    const cluster = currentClustersData.find(c => c.cluster_id === clusterId);
+    if (!cluster || !cluster.items) return;
+
+    const allSelected = cluster.items.every((_, idx) => selectedArticlesMap.has(`${clusterId}_${idx}`));
+
+    cluster.items.forEach((item, idx) => {
+        const key = `${clusterId}_${idx}`;
+        if (allSelected) {
+            selectedArticlesMap.delete(key);
+        } else {
+            selectedArticlesMap.set(key, item);
+        }
+    });
+
+    updateSelectedUI();
+}
+
+function updateSelectedUI() {
+    // 1. 更新卡片勾选样式
+    currentClustersData.forEach(cluster => {
+        cluster.items.forEach((_, idx) => {
+            const key = `${cluster.cluster_id}_${idx}`;
+            const isChecked = selectedArticlesMap.has(key);
+            const el = document.getElementById(`subItem_${key}`);
+            if (el) {
+                el.classList.toggle('checked', isChecked);
+                const cb = el.querySelector('.sub-checkbox');
+                if (cb) {
+                    cb.innerHTML = isChecked ? '<i data-lucide="check" style="width: 12px; height: 12px;"></i>' : '';
+                }
+            }
+        });
+    });
+
+    // 2. 更新吸底多选工具条
+    const dock = document.getElementById('multiSelectDock');
+    const badge = document.getElementById('selectedCountBadge');
+    const count = selectedArticlesMap.size;
+
+    if (badge) badge.innerText = count;
+    if (dock) {
+        dock.classList.toggle('active', count > 0);
+    }
+
+    // 3. 联动更新输入框提示
+    const input = document.getElementById('mobileTopicInput');
+    if (input && count > 0) {
+        const titles = Array.from(selectedArticlesMap.values()).map(a => a.title);
+        input.value = `【多源情报交叉研判】已选定 ${count} 篇报道：\n` + titles.map((t, i) => `${i+1}. ${t}`).join('\n');
+        autoResizeTextarea(input);
+    } else if (input && count === 0) {
+        input.value = '';
+        input.style.height = 'auto';
+    }
+
     refreshIcons();
 }
 
@@ -301,6 +436,12 @@ async function triggerMobileGenerate() {
     const formData = new FormData();
     if (topic) formData.append('topic', topic);
     if (selectedFile) formData.append('file', selectedFile);
+
+    // 传递多选新闻列表数据，驱动后端抓取正文与交叉研判
+    if (selectedArticlesMap.size > 0) {
+        const articlesList = Array.from(selectedArticlesMap.values());
+        formData.append('selected_articles', JSON.stringify(articlesList));
+    }
 
     const themeVal = document.getElementById('themeSelect') ? document.getElementById('themeSelect').value : 'think_tank';
     const styleVal = document.getElementById('imageStyleSelect') ? document.getElementById('imageStyleSelect').value : 'photojournalism';
@@ -789,4 +930,12 @@ function showToast(msg, type = 'info') {
     toastTimeout = setTimeout(() => {
         toast.classList.remove('active');
     }, 2800);
+}
+
+function triggerMultiSelectGenerate() {
+    if (selectedArticlesMap.size === 0) {
+        showToast('请先在上方勾选至少一篇同类报道', 'warning');
+        return;
+    }
+    triggerMobileGenerate();
 }

@@ -96,11 +96,15 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
         if path in ["/api/topics", "/api/crawl"]:
             query = parse_qs(parsed.query)
             cat = query.get("category", ["all"])[0]
+            clustered = query.get("clustered", ["1"])[0]
             try:
-                topics = DefenseCrawler.fetch_multi_source_topics(category=cat, limit=20)
-                # 顺便将抓取结果写入 SQLite 资讯去重池
+                topics = DefenseCrawler.fetch_multi_source_topics(category=cat, limit=25)
                 DatabaseManager.record_news_items(topics)
-                self._send_json({"code": 200, "topics": topics})
+                if clustered == "1":
+                    clusters = DefenseCrawler.cluster_topics(topics)
+                    self._send_json({"code": 200, "clusters": clusters, "raw_topics": topics})
+                else:
+                    self._send_json({"code": 200, "topics": topics})
             except Exception as e:
                 logger.error(f"拉取情报异常: {e}")
                 self._send_json({"code": 500, "message": str(e)})
@@ -165,6 +169,19 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
         path = parsed.path
+
+        # 0. [API] 单篇/多篇新闻正文实时抓取: POST /api/topics/fetch_content
+        if path == "/api/topics/fetch_content":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len).decode("utf-8")
+                data = json.loads(body)
+                url = data.get("url", "")
+                text = DefenseCrawler.fetch_article_content(url) if url else ""
+                self._send_json({"code": 200, "content": text})
+            except Exception as e:
+                self._send_json({"code": 500, "message": str(e)})
+            return
 
         # 1. [API] 文章与配图生成 (流式深度思考): POST /api/generate/stream
         if path == "/api/generate/stream":
@@ -290,7 +307,34 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             topic = form.getvalue("topic", "").strip()
             theme_choice = form.getvalue("theme", "think_tank").strip()
             image_style = form.getvalue("image_style", "photojournalism").strip()
+            selected_articles_str = form.getvalue("selected_articles", "").strip()
             raw_content = ""
+
+            # 优先从多选新闻中并发抓取真实正文并组装多源情报包
+            if selected_articles_str:
+                try:
+                    articles_list = json.loads(selected_articles_str)
+                    if isinstance(articles_list, list) and len(articles_list) > 0:
+                        packet_lines = [f"【多源实时战略情报输入包 · 采样基准：{datetime.now().strftime('%Y年%m月%d日')}】\n"]
+                        for idx, art in enumerate(articles_list):
+                            url = art.get("url", "")
+                            title = art.get("title", "")
+                            source = art.get("source", "权威公开报道")
+                            pub_time = art.get("pub_time", "实时")
+                            logger.info(f"正在深度抓取情报源 [{idx+1}] 正文全文: {title[:20]}...")
+                            fetched_text = DefenseCrawler.fetch_article_content(url) if url else ""
+                            article_text = fetched_text or art.get("summary", "") or "依托公开现场战报要点"
+                            packet_lines.append(f"""
+---
+[情报源 {idx+1}] {source} (发布时间：{pub_time})
+标题：《{title}》
+原文链接：{url}
+现场报道详细正文：
+{article_text}
+""")
+                        raw_content = "\n".join(packet_lines)
+                except Exception as e_parse:
+                    logger.warning(f"解析多选新闻材料失败: {e_parse}")
 
             if "file" in form and form["file"].filename:
                 file_item = form["file"]

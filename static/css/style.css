@@ -1409,3 +1409,274 @@ body {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* ==========================================================================
+   V4.5 专题聚类折叠与多选合并研判样式表
+   ========================================================================== */
+
+/* 专题卡片大容器 */
+.cluster-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: var(--shadow-subtle);
+    transition: all 0.2s ease;
+}
+
+.cluster-card.active-cluster {
+    border-color: var(--primary);
+}
+
+.cluster-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--bg-card);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+.cluster-header:active {
+    background: var(--bg-input);
+}
+
+.cluster-title-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 8px;
+}
+
+.cluster-name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cluster-tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.cluster-name {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-title);
+    letter-spacing: -0.2px;
+}
+
+.cluster-main-preview {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+}
+
+.cluster-meta-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cluster-count-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background: var(--bg-input);
+    color: var(--text-title);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cluster-arrow-icon {
+    width: 14px;
+    height: 14px;
+    color: var(--text-light);
+    transition: transform 0.25s ease;
+}
+
+.cluster-card.open .cluster-arrow-icon {
+    transform: rotate(180deg);
+}
+
+/* 展开后的子报道列表 */
+.cluster-body {
+    display: none;
+    border-top: 1px solid var(--border-light);
+    background: var(--bg-page);
+    padding: 8px 10px;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cluster-card.open .cluster-body {
+    display: flex;
+}
+
+.cluster-quick-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 4px 6px 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+    border-bottom: 1px dashed var(--border);
+}
+
+.select-all-btn {
+    border: none;
+    background: none;
+    color: var(--primary);
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+/* 单条子报道卡片 (带多选框) */
+.sub-news-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.sub-news-item:active {
+    transform: scale(0.98);
+}
+
+.sub-news-item.checked {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.sub-checkbox {
+    width: 17px;
+    height: 17px;
+    border-radius: 4px;
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+    flex-shrink: 0;
+    background: var(--bg-card);
+    transition: all 0.15s ease;
+}
+
+.sub-news-item.checked .sub-checkbox {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #ffffff;
+}
+
+.sub-news-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.sub-news-title {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-title);
+    line-height: 1.4;
+}
+
+.sub-news-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10.5px;
+    color: var(--text-light);
+}
+
+/* 多选浮动工具栏 (Mobile Floating Dock) */
+.multi-select-dock {
+    position: fixed;
+    bottom: calc(65px + env(safe-area-inset-bottom, 14px));
+    left: 14px;
+    right: 14px;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    z-index: 95;
+    transform: translateY(120%);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.multi-select-dock.active {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.dock-left-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #ffffff;
+}
+
+.dock-count-badge {
+    background: var(--primary);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+}
+
+.dock-desc {
+    font-size: 12px;
+    color: #e2e8f0;
+}
+
+.dock-action-btn {
+    border: none;
+    background: #ffffff;
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
+}
+
+.dock-action-btn:active {
+    transform: scale(0.94);
+}

@@ -330,3 +330,121 @@ class DefenseCrawler:
     @classmethod
     def fetch_hot_topics(cls, keywords: List[str] = None, limit: int = 15) -> List[Dict[str, Any]]:
         return cls.fetch_multi_source_topics(category="all", limit=limit)
+
+    @classmethod
+    def fetch_article_content(cls, url: str) -> str:
+        """从新闻链接中深度抓取真实正文段落，避免仅凭标题脑补"""
+        if not url or not url.startswith("http"):
+            return ""
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+
+        try:
+            from bs4 import BeautifulSoup
+            resp = requests.get(url, headers=headers, timeout=10, verify=False)
+            if resp.status_code != 200:
+                return ""
+
+            # 处理编码
+            if resp.encoding is None or resp.encoding.lower() == 'iso-8859-1':
+                resp.encoding = resp.apparent_encoding or 'utf-8'
+
+            soup = BeautifulSoup(resp.text, "html.parser")
+
+            # 清理无用脚本和导航广告
+            for tag in soup(["script", "style", "nav", "header", "footer", "aside", "form"]):
+                tag.decompose()
+
+            # 优先提取正文常见容器
+            article_body = soup.find("article") or soup.find("div", class_=lambda c: c and any(k in c.lower() for k in ["article", "content", "news-text", "detail-body", "main-content"]))
+
+            if article_body:
+                paragraphs = article_body.find_all("p")
+            else:
+                paragraphs = soup.find_all("p")
+
+            text_pieces = []
+            for p in paragraphs:
+                txt = p.get_text().strip()
+                # 过滤掉杂音段落
+                if len(txt) > 20 and not any(k in txt for k in ["版权所有", "责任编辑", "点击关注", "免责声明", "扫描二维码"]):
+                    text_pieces.append(txt)
+
+            full_text = "\n\n".join(text_pieces)
+            return full_text[:4000] if full_text else ""
+
+        except Exception as e:
+            logger.warning(f"抓取新闻正文异常 ({url}): {e}")
+            return ""
+
+    @classmethod
+    def cluster_topics(cls, topics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        同类新闻聚类算法 (Topic Clustering)
+        根据地缘核心实体与事件主干，将离散报道聚合为带折叠展开的主题组
+        """
+        clusters = []
+        visited = set()
+
+        # 核心事件实体特征字典
+        ENTITY_GROUPS = [
+            {"name": "红海与也门胡塞冲突", "keys": ["红海", "也门", "胡塞", "曼德海峡", "沙特", "亚丁湾"]},
+            {"name": "俄乌战局与前线战报", "keys": ["俄军", "乌克兰", "基辅", "顿巴斯", "库尔斯克", "哈尔科夫", "黑海", "别尔哥罗德"]},
+            {"name": "中东地区与以伊博弈", "keys": ["以色列", "以军", "伊朗", "加沙", "哈马斯", "真主党", "黎巴嫩", "叙利亚", "德黑兰"]},
+            {"name": "南海与台海演训态势", "keys": ["南海", "台海", "仁爱礁", "仙宾礁", "美菲", "美日", "演习", "防空识别区"]},
+            {"name": "高超音速与反导防空", "keys": ["高超音速", "爱国者", "S-400", "防空系统", "巡航导弹", "洲际导弹", "弹道导弹"]},
+            {"name": "无人作战与智能武器", "keys": ["无人机", "蜂群", "电子战", "反无人机", "AI战机", "机器狗", "六代机"]},
+            {"name": "美欧防务与北约战略", "keys": ["美军", "五角大楼", "北约", "欧洲司令部", "军费", "香山论坛", "国防部长"]}
+        ]
+
+        # 1. 尝试按实体特征分组
+        for grp in ENTITY_GROUPS:
+            matched_items = []
+            for idx, t in enumerate(topics):
+                if idx in visited:
+                    continue
+                title = t.get("title", "")
+                summary = t.get("summary", "")
+                comb = title + " " + summary
+                if any(k in comb for k in grp["keys"]):
+                    matched_items.append(t)
+                    visited.add(idx)
+
+            if matched_items:
+                # 提取参与报道的媒体列表
+                sources = list(set([m.get("source", "综合快讯") for m in matched_items]))
+                clusters.append({
+                    "cluster_id": f"cluster_{len(clusters)+1}",
+                    "cluster_name": grp["name"],
+                    "main_title": matched_items[0]["title"],
+                    "topic_count": len(matched_items),
+                    "category": matched_items[0].get("category", "综合热点"),
+                    "sources": sources,
+                    "latest_time": matched_items[0].get("pub_time", "刚刚"),
+                    "items": matched_items
+                })
+
+        # 2. 剩余没有匹配上特定实体的条目，单独成组或按相关性归并
+        for idx, t in enumerate(topics):
+            if idx in visited:
+                continue
+            clusters.append({
+                "cluster_id": f"cluster_{len(clusters)+1}",
+                "cluster_name": t.get("title", "独立防务事件")[:16],
+                "main_title": t.get("title", ""),
+                "topic_count": 1,
+                "category": t.get("category", "综合热点"),
+                "sources": [t.get("source", "综合快讯")],
+                "latest_time": t.get("pub_time", "刚刚"),
+                "items": [t]
+            })
+
+        return clusters
+
+    @classmethod
+    def fetch_clustered_topics(cls, category: str = "all", limit: int = 20) -> List[Dict[str, Any]]:
+        """获取聚类后的同类事件专题流 (带折叠与子报道)"""
+        raw_topics = cls.fetch_multi_source_topics(category=category, limit=limit)
+        return cls.cluster_topics(raw_topics)
