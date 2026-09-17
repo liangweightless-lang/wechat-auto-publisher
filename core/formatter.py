@@ -422,7 +422,7 @@ class WeChatFormatter:
             <div style="font-weight: 700; color: {theme['primary']}; font-size: 14.5px; margin-bottom: 6px;">
                 【{author}】
             </div>
-            <div style="color: {theme['text_sub']}; font-size: 13px;">立足 2026 全球防务与地缘博弈新常态。不跟风，不站队，只看事实与底层逻辑。</div>
+            <div style="color: {theme['text_sub']}; font-size: 13px;">立足 {datetime.datetime.now().year} 全球防务与地缘博弈新常态。不跟风，不站队，只看事实与底层逻辑。</div>
             <div style="font-size: 11.5px; color: #94a3b8; margin-top: 10px; border-top: 1px dashed {theme['border']}; padding-top: 8px;">
                 * 声明：本文基于公开防务情报、官方战报与战略兵棋推演客观撰写，文责自负，仅供学术与战略交流。
             </div>

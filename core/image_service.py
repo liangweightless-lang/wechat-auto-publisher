@@ -107,7 +107,7 @@ class ImageService:
     @staticmethod
     def generate_tactical_infographic(
         title: str,
-        label: str = "2026 战略态势研判",
+        label: str = None,
         output_path: str = "assets/tactical_infographic.jpg"
     ) -> str:
         """保底生成专业科技战术态势图"""
@@ -136,7 +136,7 @@ class ImageService:
                 draw.rectangle([(x - 2, y - 2), (x + 2, y + 2)], fill="#ea580c")
 
             draw.text((pad + 18, pad + 16), f"[ SITUATION REPORT ] // {label}", fill="#38bdf8")
-            draw.text((width - pad - 190, pad + 16), "SYSTEM: 2026 ACTIVE", fill="#22c55e")
+            draw.text((width - pad - 190, pad + 16), f"SYSTEM: {datetime.datetime.now().year} ACTIVE", fill="#22c55e")
 
             font_candidates = [
                 "/System/Library/Fonts/PingFang.ttc",

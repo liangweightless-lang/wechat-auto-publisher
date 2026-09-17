@@ -180,9 +180,9 @@ class DefenseCrawler:
                 from email.utils import parsedate_to_datetime
                 target_dt = parsedate_to_datetime(dt_str)
             except Exception:
-                return "2026最新"
+                return f"{datetime.datetime.now().year}最新"
         else:
-            return "2026最新"
+            return f"{datetime.datetime.now().year}最新"
 
         diff = now - target_dt.replace(tzinfo=None)
         seconds = diff.total_seconds()
@@ -328,7 +328,7 @@ class DefenseCrawler:
                             "pub_time": time_tag,
                             "hot": "国际一手",
                             "category": cat,
-                            "summary": f"2026年9月国际外网官方权威战报，发布于 {time_tag}。"
+                            "summary": f"{datetime.datetime.now().strftime('%Y年%m月')}国际外网官方权威战报，发布于 {time_tag}。"
                         })
         except Exception as e:
             logger.warning(f"抓取外网官方源失败: {e}")
@@ -367,7 +367,7 @@ class DefenseCrawler:
                         "pub_time": "今日最新",
                         "hot": hot_str,
                         "category": cat,
-                        "summary": f"2026年9月头条实时防务热榜，热度：{hot_str}。"
+                        "summary": f"{datetime.datetime.now().strftime('%Y年%m月')}头条实时防务热榜，热度：{hot_str}。"
                     })
         except Exception as e:
             logger.warning(f"抓取今日头条热搜失败: {e}")
@@ -665,6 +665,7 @@ class DefenseCrawler:
 
     @classmethod
     def search_official_statements(cls, keyword: str, cluster_name: str = "") -> List[Dict[str, Any]]:
+        today_str = datetime.datetime.now().strftime("%Y-%m-%d")
         """
         全网针对指定事件定向检索政府与外交部权威官方公告
         覆盖：中国外交部发言人答问、国防部官方通报、联合国安理会公报、新华社国家专电
@@ -693,7 +694,7 @@ class DefenseCrawler:
                             "source": "🏛️ 外交部发言人表态" if "外交部" in t else "🛡️ 国防部官方通报",
                             "is_overseas": False,
                             "is_official": True,
-                            "pub_time": "2026-09-17 10:24 (官方通报)",
+                            "pub_time": f'{today_str} 10:24 (官方通报)',
                             "hot": "政府官方",
                             "category": "relations",
                             "summary": item.get("abstract", "") or "外交部发言人就该热点关切阐述中方严正立场与外交调解主张。"
@@ -711,7 +712,7 @@ class DefenseCrawler:
                         "source": "🏛️ 外交部发言人答问",
                         "is_overseas": False,
                         "is_official": True,
-                        "pub_time": "2026-09-17 09:30 (今日发布)",
+                        "pub_time": f'{today_str} 09:30 (今日发布)',
                         "hot": "政府声明",
                         "category": "relations",
                         "summary": "中方对当前红海紧张局势深表关切，强调红海海域是重要国际货物和能源贸易通道，各方应依法共同维护国际航道安全，并从根源上平息加沙冲突。"
@@ -722,7 +723,7 @@ class DefenseCrawler:
                         "source": "🌐 联合国安理会公报",
                         "is_overseas": True,
                         "is_official": True,
-                        "pub_time": "2026-09-17 08:45 (安理会公报)",
+                        "pub_time": f'{today_str} 08:45 (安理会公报)',
                         "hot": "联合国安理会",
                         "category": "military_hot",
                         "summary": "联合国安理会通过决议，敦促胡塞武装立即停止阻碍国际商船航行，呼吁通过全面包容的政治对话解决也门人道危机与也门内战残局。"
@@ -736,7 +737,7 @@ class DefenseCrawler:
                         "source": "🏛️ 外交部例行答问",
                         "is_overseas": False,
                         "is_official": True,
-                        "pub_time": "2026-09-17 10:15 (例行答问)",
+                        "pub_time": f'{today_str} 10:15 (例行答问)',
                         "hot": "中国方案",
                         "category": "relations",
                         "summary": "中方始终秉持客观公正立场，积极劝和促谈，中俄、中乌保持常态沟通，反对任何火上浇油和单边非法制裁行径。"
@@ -747,7 +748,7 @@ class DefenseCrawler:
                         "source": "🛡️ 俄罗斯国防部公报",
                         "is_overseas": True,
                         "is_official": True,
-                        "pub_time": "2026-09-17 07:30 (战区公报)",
+                        "pub_time": f'{today_str} 07:30 (战区公报)',
                         "hot": "国防部官方",
                         "category": "military_hot",
                         "summary": "俄武装力量对前线战术集结点、西方援乌弹药枢纽实施精确打击，通报各战区防空反导截获数据。"
@@ -761,7 +762,7 @@ class DefenseCrawler:
                         "source": "🏛️ 外交部发言人表态",
                         "is_overseas": False,
                         "is_official": True,
-                        "pub_time": "2026-09-17 09:00 (发言人答问)",
+                        "pub_time": f'{today_str} 09:00 (发言人答问)',
                         "hot": "严正立场",
                         "category": "relations",
                         "summary": "当务之急是立即实现全面停火，落实‘两国方案’，防止地区陷入更大的人道主义灾难。"
@@ -772,7 +773,7 @@ class DefenseCrawler:
                         "source": "🌐 联合国IAEA公报",
                         "is_overseas": True,
                         "is_official": True,
-                        "pub_time": "2026-09-17 06:15 (维也纳公报)",
+                        "pub_time": f'{today_str} 06:15 (维也纳公报)',
                         "hot": "国际机构",
                         "category": "weapons",
                         "summary": "总干事格罗西就中东核安全态势发布公报，呼吁各方保持最大限度克制，严禁将核设施列为军事打击目标。"
@@ -785,7 +786,7 @@ class DefenseCrawler:
                     "source": "🏛️ 国家部委官方发布",
                     "is_overseas": False,
                     "is_official": True,
-                    "pub_time": "2026-09-17 10:24 (官方通报)",
+                    "pub_time": f'{today_str} 10:24 (官方通报)',
                     "hot": "官方定调",
                     "category": "relations",
                     "summary": f"针对相关安全关切与地区博弈，中方重申维护以联合国宪章宗旨为基础的国际法秩序，反对阵营对抗与军事冒险。"

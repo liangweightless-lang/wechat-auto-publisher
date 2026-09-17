@@ -508,7 +508,7 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
             try:
                 img2_path = ImageService.generate_tactical_infographic(
                     title=title,
-                    label="2026 多波次攻防推演与雷达盲区示意",
+                    label=f"{datetime.datetime.now().year} 多波次攻防推演与雷达盲区示意",
                     output_path="assets/tactical_situation.jpg"
                 )
             except Exception as e_tac:

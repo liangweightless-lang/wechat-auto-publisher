@@ -24,7 +24,7 @@ class StrategyManager:
 
     DEFAULT_STRATEGY = {
         "version": "1.0",
-        "last_updated": "2026-09-17",
+        "last_updated": time.strftime("%Y-%m-%d"),
         "focus_summary": "全面覆盖中东以伊冲突、俄乌前线交锋、红海护航以及台海南海等四大垂直体系防务动态。",
         "active_keywords": [
             "高超音速", "饱和打击", "防空反导", "防区外", "雷达盲区", 

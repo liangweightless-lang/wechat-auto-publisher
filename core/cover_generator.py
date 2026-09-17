@@ -89,7 +89,7 @@ class CoverGenerator:
                     # 顶部品牌条
                     draw.rectangle([(0, 0), (target_w, 42)], fill=(15, 23, 42))
                     draw.rectangle([(20, 12), (24, 30)], fill=(234, 88, 12))  # 橙色强调条
-                    draw.text((34, 13), f"局势洞见 · {category} // 2026 战略研判报告", fill="#cbd5e1", font=font_small)
+                    draw.text((34, 13), f"局势洞见 · {category} // {datetime.datetime.now().year} 战略研判报告", fill="#cbd5e1", font=font_small)
 
                     # 底部标题呈现
                     if title:

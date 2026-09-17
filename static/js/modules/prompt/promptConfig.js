@@ -10,7 +10,7 @@ export function initPromptDrawer() {
     promptDrawer = new BottomSheet({
         id: 'promptSheet',
         title: '智库研判 Prompt 配置',
-        subtitle: '2026年战时时间坐标锚定与四步研判法则（热更新实时生效）',
+        subtitle: `${new Date().getFullYear()}年战时时间坐标锚定与四步研判法则（热更新实时生效）`,
         icon: 'sliders-horizontal',
         renderBody: renderPromptLayout,
         onOpen: loadPromptConfig
