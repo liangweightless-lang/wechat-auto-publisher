@@ -19,6 +19,7 @@ PORT = 8080
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """支持多线程并发的 HTTP 服务器"""
     daemon_threads = True
+    allow_reuse_address = True
 
 
 def run():
