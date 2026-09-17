@@ -1635,27 +1635,29 @@ body {
 .sub-news-item {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
-    padding: 10px 10px;
+    gap: 8px;
+    padding: 8px 10px;
     background: var(--bg-card);
     border: 1px solid var(--border-light);
-    border-radius: 8px;
+    border-radius: 7px;
     cursor: pointer;
     transition: all 0.15s ease;
+    margin-bottom: 5px;
+    box-sizing: border-box;
 }
 
-.sub-news-item:active {
-    transform: scale(0.98);
+.sub-news-item:hover {
+    border-color: rgba(37, 99, 235, 0.25);
 }
 
 .sub-news-item.checked {
     border-color: var(--primary);
-    background: var(--primary-light);
+    background: rgba(37, 99, 235, 0.05);
 }
 
 .sub-checkbox {
-    width: 17px;
-    height: 17px;
+    width: 16px;
+    height: 16px;
     border-radius: 4px;
     border: 1.5px solid var(--border);
     display: flex;
@@ -1675,24 +1677,76 @@ body {
 
 .sub-news-body {
     flex: 1;
+    min-width: 0; /* 关键：防止 flex 子元素在窄屏溢出挤压 */
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
 }
 
 .sub-news-title {
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--text-title);
-    line-height: 1.4;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-main);
+    line-height: 1.42;
+    word-break: break-word;
 }
 
+/* 元信息行：左右舒展两端对齐，严禁字形破碎折行 */
 .sub-news-meta {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 10.5px;
+    justify-content: space-between;
+    width: 100%;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1;
+}
+
+.sub-meta-left {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.meta-source-tag {
+    font-weight: 500;
+    color: var(--text-main);
+    white-space: nowrap;
+}
+
+.meta-dot {
     color: var(--text-light);
+    user-select: none;
+}
+
+.meta-time-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.sub-source-link {
+    color: var(--primary);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 10.5px;
+    white-space: nowrap;
+    padding: 1.5px 6px;
+    border-radius: 4px;
+    background: rgba(37, 99, 235, 0.08);
+    transition: background 0.15s ease;
+    flex-shrink: 0;
+}
+
+.sub-source-link:hover {
+    background: rgba(37, 99, 235, 0.16);
 }
 
 /* 多选浮动工具栏 (Mobile Floating Dock) */
@@ -1770,27 +1824,30 @@ body {
 
 /* 官方高权重公告卡片 (金盾高光) */
 .sub-news-item.official-item {
-    background: #fffdfa;
-    border: 1px solid rgba(245, 158, 11, 0.35);
-    box-shadow: 0 1px 4px rgba(245, 158, 11, 0.08);
+    background: rgba(245, 158, 11, 0.02);
+    border: 1px solid rgba(245, 158, 11, 0.22);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 .sub-news-item.official-item.checked {
-    background: #fef3c7;
-    border-color: #d97706;
+    background: rgba(37, 99, 235, 0.06);
+    border-color: var(--primary);
 }
 
 .official-badge-gold {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
+    gap: 2px;
     font-size: 10px;
-    font-weight: 700;
+    font-weight: 600;
     padding: 1px 5px;
-    border-radius: 4px;
-    background: rgba(217, 119, 6, 0.12);
-    color: #b45309;
-    border: 1px solid rgba(217, 119, 6, 0.2);
+    border-radius: 3px;
+    background: rgba(245, 158, 11, 0.12);
+    color: #d97706;
+    border: 1px solid rgba(245, 158, 11, 0.22);
+    vertical-align: middle;
+    margin-right: 4px;
+    white-space: nowrap;
 }
 
 /* 专题底部按需扩展信源大按钮 */

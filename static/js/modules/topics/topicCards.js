@@ -228,27 +228,28 @@ export function renderSubNewsItems(clusterId, items) {
         subHtml += `
         <div class="sub-news-item ${isChecked ? 'checked' : ''} ${isOfficial ? 'official-item' : ''}" id="subItem_${key}" onclick="window.app.toggleSelectNews('${clusterId}', ${itemIdx}, event)">
             <div class="sub-checkbox">
-                ${isChecked ? '<i data-lucide="check" style="width: 12px; height: 12px;"></i>' : ''}
+                ${isChecked ? '<i data-lucide="check" style="width: 11px; height: 11px;"></i>' : ''}
             </div>
             <div class="sub-news-body">
                 <div class="sub-news-title">
                     ${isOfficial ? '<span class="official-badge-gold"><i data-lucide="shield-check" style="width: 10px; height: 10px;"></i>官方权威</span> ' : ''}
-                    ${item.title}
-                    ${item.title_original ? `<div class="sub-news-original-title" style="font-size: 11.5px; color: #94a3b8; margin-top: 3px; font-style: italic; line-height: 1.35;"><span style="color: #64748b; font-weight: 600; font-style: normal; background: rgba(148, 163, 184, 0.12); padding: 1px 4px; border-radius: 3px; margin-right: 4px;">英译汉</span>${item.title_original}</div>` : ''}
+                    <span class="sub-title-text">${item.title}</span>
+                    ${item.title_original ? `<div class="sub-news-original-title" style="font-size: 11px; color: #94a3b8; margin-top: 2px; font-style: italic; line-height: 1.3;"><span style="color: #64748b; font-weight: 600; font-style: normal; background: rgba(148, 163, 184, 0.12); padding: 1px 4px; border-radius: 3px; margin-right: 4px;">外文原文</span>${item.title_original}</div>` : ''}
                 </div>
                 <div class="sub-news-meta">
-                    <span class="meta-source-tag">${source}</span>
-                    <span>·</span>
-                    <span class="meta-time-tag">
-                        <i data-lucide="clock" style="width: 10px; height: 10px;"></i>
-                        <span>${formatDisplayTime(pubTime, itemIdx)}</span>
-                    </span>
-                    ${(item.keywords && item.keywords.length > 0) ? `
-                        <span class="sub-kw-group">
-                            ${item.keywords.slice(0, 2).map(k => `<span class="sub-kw-tag">${k}</span>`).join("")}
+                    <div class="sub-meta-left">
+                        <span class="meta-source-tag">${source}</span>
+                        <span class="meta-dot">·</span>
+                        <span class="meta-time-tag">
+                            <i data-lucide="clock" style="width: 10px; height: 10px;"></i>
+                            <span>${formatDisplayTime(pubTime, itemIdx)}</span>
                         </span>
-                    ` : ""}
-                    ${url ? `<span>·</span><a href="${url}" target="_blank" onclick="event.stopPropagation()" style="color: var(--primary); text-decoration: none; display: inline-flex; align-items: center; gap: 2px;"><i data-lucide="external-link" style="width: 10px; height: 10px;"></i>出处公告</a>` : ''}
+                    </div>
+                    ${url ? `
+                    <a href="${url}" target="_blank" onclick="event.stopPropagation()" class="sub-source-link">
+                        <span>出处公告</span>
+                        <i data-lucide="external-link" style="width: 10px; height: 10px;"></i>
+                    </a>` : ''}
                 </div>
             </div>
         </div>
