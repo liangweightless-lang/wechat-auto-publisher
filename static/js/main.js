@@ -11,6 +11,7 @@ import { openHistoryDrawer, closeHistoryDrawer, loadHistoryArticles, loadHistory
 import { openStrategyDrawer, closeStrategyDrawer, loadStrategyData, sendStrategyTuneMessage, triggerAiRadarRefresh, resetStrategyToDefault, syncTodayRadarToHome } from './modules/strategy/strategyChat.js';
 import { openPromptDrawer, closePromptDrawer, loadPromptConfig, savePrompts, resetPrompts } from './modules/prompt/promptConfig.js';
 import { openModelSettingsDrawer, closeModelSettingsDrawer, applyModelPreset, toggleKeyVisibility, testModelConnection, saveModelConfig, loadCurrentModelConfig } from './modules/settings/modelSettings.js';
+import { initAuth, showLoginModal, hideLoginModal, toggleAuthPwdVisibility, handleLoginSubmit, toggleUserDropdownMenu, triggerLogout, openChangePwdModal } from './modules/auth/authModal.js';
 import { publishApi } from './api/publishApi.js';
 
 // 统一抽屉路由分配 (Decoupled Drawer Router)
@@ -212,6 +213,14 @@ window.app = {
     closeHistoryDrawer,
     openPromptDrawer,
     closePromptDrawer,
+    initAuth,
+    showLoginModal,
+    hideLoginModal,
+    toggleAuthPwdVisibility,
+    handleLoginSubmit,
+    toggleUserDropdownMenu,
+    triggerLogout,
+    openChangePwdModal,
     openModelSettingsDrawer,
     closeModelSettingsDrawer,
     applyModelPreset,
@@ -257,6 +266,7 @@ Object.assign(window, window.app);
 // 页面加载生命周期
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
+    initAuth();
     document.addEventListener('click', () => { const b = document.getElementById('globalTitleBubble'); if (b) b.classList.remove('visible'); });
     refreshIcons();
     fetchAndRenderTopics('all', false);

@@ -25,6 +25,7 @@ from typing import Any, Dict
 from config.settings import logger, BASE_DIR
 from config import settings
 from core.crawler import DefenseCrawler
+from core.auth import AuthManager
 from core.content_parser import ContentParser
 from core.ai_writer import AIWriter
 from core.formatter import WeChatFormatter
@@ -59,17 +60,60 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
     PublisherHTTPHandler = None
     """自定义 HTTP 请求处理器"""
 
+    def _extract_token(self):
+        """从 Authorization 请求头或 Cookie 中提取 Token"""
+        auth_header = self.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            return auth_header[7:].strip()
+        
+        cookie_header = self.headers.get("Cookie", "")
+        if "auth_token=" in cookie_header:
+            parts = cookie_header.split(";")
+            for part in parts:
+                part = part.strip()
+                if part.startswith("auth_token="):
+                    return part[len("auth_token="):].strip()
+        return None
+
+    def _is_authenticated(self):
+        """校验当前请求是否通过认证"""
+        token = self._extract_token()
+        return AuthManager.validate_token(token)
+
+
     def do_OPTIONS(self):
         """处理预检跨域请求"""
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         self.end_headers()
 
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
+
+        # 0. 登录状态核查端点: GET /api/auth/check
+        if path == "/api/auth/check":
+            if self._is_authenticated():
+                self._send_json({"code": 200, "user": {"username": "admin"}})
+            else:
+                self.send_response(401)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"code": 401, "message": "未登录或登录已过期"}).encode("utf-8"))
+            return
+
+        # 0.1 API 安全拦截网关 (未登录拒绝访问核心业务数据)
+        if path.startswith("/api/"):
+            if not self._is_authenticated():
+                self.send_response(401)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"code": 401, "message": "未登录或登录已过期，请重新登录"}).encode("utf-8"))
+                return
 
         # 1. 首页静态页面
         if path == "/" or path == "/index.html":
@@ -237,6 +281,87 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
         path = parsed.path
+
+        # 0. 用户登录: POST /api/auth/login (公开白名单)
+        if path == "/api/auth/login":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len).decode("utf-8")
+                data = json.loads(body)
+                username = data.get("username", "").strip()
+                password = data.get("password", "")
+
+                if username != "admin" or not AuthManager.verify_password(password):
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"code": 400, "message": "账号或密码错误"}).encode("utf-8"))
+                    return
+                
+                token = AuthManager.create_session()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Set-Cookie", f"auth_token={token}; Path=/; Max-Age=604800; SameSite=Lax")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "code": 200,
+                    "message": "登录成功",
+                    "token": token,
+                    "user": {"username": "admin"}
+                }).encode("utf-8"))
+            except Exception as e:
+                logger.error(f"登录处理异常: {e}")
+                self._send_json({"code": 500, "message": str(e)})
+            return
+
+        # 0.1 API 安全拦截网关 (拦截除 login 之外的未认证 POST 请求)
+        if path.startswith("/api/"):
+            if not self._is_authenticated():
+                self.send_response(401)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"code": 401, "message": "未登录或登录已过期，请重新登录"}).encode("utf-8"))
+                return
+
+        # 0.2 用户注销: POST /api/auth/logout
+        if path == "/api/auth/logout":
+            token = self._extract_token()
+            AuthManager.revoke_token(token)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Set-Cookie", "auth_token=; Path=/; Max-Age=0; SameSite=Lax")
+            self.end_headers()
+            self.wfile.write(json.dumps({"code": 200, "message": "已安全退出登录"}).encode("utf-8"))
+            return
+
+        # 0.3 修改密码: POST /api/auth/change_password
+        if path == "/api/auth/change_password":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len).decode("utf-8")
+                data = json.loads(body)
+                old_pwd = data.get("old_password", "")
+                new_pwd = data.get("new_password", "")
+                ok, msg = AuthManager.change_password(old_pwd, new_pwd)
+                if ok:
+                    token = self._extract_token()
+                    AuthManager.revoke_token(token)
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.send_header("Set-Cookie", "auth_token=; Path=/; Max-Age=0; SameSite=Lax")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"code": 200, "message": msg}).encode("utf-8"))
+                else:
+                    self._send_json({"code": 400, "message": msg})
+            except Exception as e:
+                logger.error(f"修改密码异常: {e}")
+                self._send_json({"code": 500, "message": str(e)})
+            return
 
         # 0.01 [API] 与 AI 策略总监对话交互调优: POST /api/strategy/chat
         if path == "/api/strategy/chat":
