@@ -778,7 +778,9 @@ class AppAPIHandler(SimpleHTTPRequestHandler):
                 evt_type = evt.get("type")
                 evt_data = evt.get("data")
 
-                if evt_type == "status":
+                if evt_type == "engine_info":
+                    send_sse("engine_info", {"model": evt.get("model", "AI")})
+                elif evt_type == "status":
                     send_sse("status", {"message": evt_data})
                 elif evt_type == "think":
                     send_sse("think", {"text": evt_data})

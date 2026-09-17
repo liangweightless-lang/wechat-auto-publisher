@@ -567,7 +567,12 @@ async function triggerMobileGenerate() {
                     continue;
                 }
 
-                if (eventType === 'status') {
+                if (eventType === 'engine_info') {
+                    const badge = document.getElementById('modalEngineBadge');
+                    if (badge && dataObj.model) {
+                        badge.innerText = `${dataObj.model} 推理流`;
+                    }
+                } else if (eventType === 'status') {
                     if (statusMsg) statusMsg.innerText = dataObj.message || '';
                     if (dataObj.message && dataObj.message.includes('配图')) {
                         setStepActive(4);

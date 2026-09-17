@@ -112,8 +112,11 @@ class AIStrategist:
             "```"
         )
 
-        api_key = settings.LLM_API_KEY
-        base_url = settings.LLM_BASE_URL.rstrip("/")
+        from core.db import DatabaseManager
+        llm_cfg = DatabaseManager.get_llm_config()
+        api_key = llm_cfg.get("api_key", "").strip() or settings.LLM_API_KEY
+        base_url = (llm_cfg.get("base_url", "").strip() or settings.LLM_BASE_URL).rstrip("/")
+        active_model = llm_cfg.get("model", "").strip() or settings.LLM_MODEL
 
         # 组装对话消息
         messages = [{"role": "system", "content": system_prompt}]
@@ -123,8 +126,8 @@ class AIStrategist:
         assistant_reply = "已收到您的策略指示，已为您优化抓取雷达与研报侧重点！"
         json_delta = {}
 
-        # 优先使用 Qwen2.5-7B 秒级响应，备用 DeepSeek-V3
-        for model in ["Qwen/Qwen2.5-7B-Instruct", "deepseek-ai/DeepSeek-V3"]:
+        # 动态采用当前运行态配置的大模型标识，严格杜绝硬编码
+        for model in [active_model]:
             try:
                 resp = requests.post(
                     f"{base_url}/chat/completions",
@@ -135,7 +138,7 @@ class AIStrategist:
                         "temperature": 0.3,
                         "max_tokens": 800
                     },
-                    timeout=15,
+                    timeout=18,
                     verify=False
                 )
                 if resp.status_code == 200:
@@ -199,8 +202,11 @@ class AIStrategist:
         """
         基于近期国际动态与战报线索，AI 自动提炼今天最关键的 8-12 个防务雷达词
         """
-        api_key = settings.LLM_API_KEY
-        base_url = settings.LLM_BASE_URL.rstrip("/")
+        from core.db import DatabaseManager
+        llm_cfg = DatabaseManager.get_llm_config()
+        api_key = llm_cfg.get("api_key", "").strip() or settings.LLM_API_KEY
+        base_url = (llm_cfg.get("base_url", "").strip() or settings.LLM_BASE_URL).rstrip("/")
+        active_model = llm_cfg.get("model", "").strip() or settings.LLM_MODEL
         titles_sample = "\n".join(recent_news_titles[:15]) if recent_news_titles else "暂无样本新闻"
 
         prompt = (
@@ -214,12 +220,12 @@ class AIStrategist:
                 f"{base_url}/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
-                    "model": "Qwen/Qwen2.5-7B-Instruct",
+                    "model": active_model,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.2,
                     "max_tokens": 300
                 },
-                timeout=12,
+                timeout=15,
                 verify=False
             )
             if resp.status_code == 200:

@@ -178,8 +178,8 @@ class DefenseCrawler:
         if not api_key:
             return results
 
-        # 智能匹配翻译模型: 若当前是智谱清言则用其永久免费的 glm-4-flash，否则默认极速 Qwen2.5-7B
-        trans_model = "glm-4-flash" if "bigmodel" in base_url.lower() or "glm" in active_model.lower() else "Qwen/Qwen2.5-7B-Instruct"
+        # 统一使用当前系统配置的运行态模型，彻底杜绝硬编码
+        trans_model = active_model
 
         chunk_size = 5
         chunks = [to_translate[i:i + chunk_size] for i in range(0, len(to_translate), chunk_size)]
@@ -232,7 +232,7 @@ class DefenseCrawler:
 
         if has_new:
             cls._save_translate_cache()
-            logger.info(f"[Qwen2.5-7B] 并发批量翻译成功：{len(results)} 条标题已更新并持久化")
+            logger.info(f"[{trans_model}] 并发批量翻译成功：{len(results)} 条标题已更新并持久化")
 
         return results
 

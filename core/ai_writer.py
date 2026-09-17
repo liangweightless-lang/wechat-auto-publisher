@@ -64,9 +64,10 @@ class AIWriter:
 请结合上述历史档案，以深度防务智库首席专家的专业笔触，展开透彻分析。请直接输出 Markdown（首行 # 标题，次行 > 摘要，随后正文与兵器谱表格）："""
 
     def __init__(self):
-        self.api_key = os.getenv("LLM_API_KEY")
-        self.base_url = os.getenv("LLM_BASE_URL", "https://api.siliconflow.cn/v1")
-        self.model = os.getenv("LLM_MODEL", "deepseek-ai/DeepSeek-R1")
+        llm_cfg = DatabaseManager.get_llm_config()
+        self.api_key = llm_cfg["api_key"]
+        self.base_url = llm_cfg["base_url"]
+        self.model = llm_cfg["model"]
         self.retriever = HistoricalRetriever()
         self.formatter = WeChatFormatter()
 
@@ -134,6 +135,7 @@ class AIWriter:
         }
 
         url = f"{active_base_url.rstrip('/')}/chat/completions"
+        yield {"type": "engine_info", "model": active_model}
         yield {"type": "status", "data": f"正在连接 AI 推理集群 ({active_model})，启动深度战局推演..."}
 
         full_thinking = []
@@ -143,9 +145,9 @@ class AIWriter:
             resp = requests.post(url, headers=headers, json=payload, stream=True, timeout=180)
             if resp.status_code != 200:
                 if resp.status_code == 402 or "insufficient" in resp.text.lower():
-                    err_msg = "⚠️ 硅基流动(SiliconFlow) AI推理账户余额已耗尽 (HTTP 402)。请前往控制台 (cloud.siliconflow.cn) 充值，或在 .env 中更换有额度的 LLM_API_KEY 后重试。"
+                    err_msg = "⚠️ 当前 AI 推理账户余额已耗尽 (HTTP 402)。请前往模型服务商控制台充值，或在系统设置中更换可用模型与密钥。"
                 elif resp.status_code == 401:
-                    err_msg = "⚠️ AI 推理密钥无效或已过期 (HTTP 401 Unauthorized)。请检查 .env 文件中的 LLM_API_KEY 配置。"
+                    err_msg = "⚠️ AI 推理密钥无效或已过期 (HTTP 401 Unauthorized)。请在系统设置中检查并更新 API 密钥。"
                 else:
                     err_msg = f"AI 推理集群响应异常: HTTP {resp.status_code} - {resp.text}"
                 logger.error(err_msg)
